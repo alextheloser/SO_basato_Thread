@@ -12,7 +12,6 @@
 #define PASSO 1
 #define MAX 4316
 
-
 typedef enum {Navicella, Nemico, Missile, Bomba}identity;
 
 typedef struct{
