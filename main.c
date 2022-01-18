@@ -12,7 +12,10 @@
 #define PASSO 1
 #define MAX 4316
 
-typedef enum {Navicella, Nemico, Missile, Bomba}identity;
+pthread_t turnodimorire=-1;
+pthread_t turnodimorireNemici=-1;
+
+typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
 
 typedef struct{
     int x;
@@ -26,7 +29,6 @@ typedef struct{
 int menu();
 void *navicella();
 void *nemiciPrimoLivello(void *arg);
-void nemiciSecondoLivello(int pipeout, int x, int y, int idNemico, int maxx, int maxy);
 void *controllo();
 void *missile(void *arg);
 void *bomba(void *arg);
@@ -112,13 +114,15 @@ int valoreDifficolta=1;
 typedef struct {
     int x;
     int y;
-    int idNemico;    
+    int idNemico;
+    pthread_t Tnemico;
 }valuesNemici;
 
 typedef struct {
     int navx; 
     int navy;
     int diry;
+    pthread_t Tmissile;
 }valuesMissili;
 
 typedef struct {
@@ -131,10 +135,6 @@ typedef struct {
 
 int isMissileVivo1=0;
 int isMissileVivo2=0;
-
-
-pthread_t Tmissile1;
-pthread_t Tmissile2;
 
 int main() {
     int filedes[2], i, j=0, x_nemici, y_nemici, numColonne=1;
@@ -174,17 +174,20 @@ int main() {
 
     nemico1.x = 30;
     nemico1.y = 10;
-    nemico1.idNemico=0;  
+    nemico1.idNemico=0;
+    nemico1.Tnemico=Tnemico;
 
 
     pthread_create(&Tnemico,NULL,nemiciPrimoLivello,(void *)&nemico1);
-    //
-    pthread_create(&Tcontrollo,NULL,controllo,NULL);
-    
+
+    //pthread_create(&Tcontrollo,NULL,controllo,NULL);
+
+    controllo();
 
     pthread_join(Tnavicella, NULL);
-    pthread_join(Tcontrollo, NULL);
+    //pthread_join(Tcontrollo, NULL);
     pthread_join(Tnemico, NULL);
+
 
 
 
@@ -211,14 +214,20 @@ void* navicella(){
     //pid_t pid_missile1, pid_missile2;
     int isMissileVivo1=0, isMissileVivo2=0, sig1, sig2, c;
 
+    pthread_t Tmissile1;
+    pthread_t Tmissile2;
+
     scriveNelBuffer(pos_navicella);
-
+    int culo1;
+    int culo2;
     while(1) {
-
-        if(isMissileVivo1==0 && isMissileVivo2==0){
-                    pthread_join(Tmissile1, NULL);
-                    pthread_join(Tmissile2, NULL);
+        pthread_mutex_lock(&mtx);
+        if(isMissileVivo1==1 || isMissileVivo2==1){
+            pthread_join(Tmissile1, NULL);
+            pthread_join(Tmissile2, NULL);
         }
+        pthread_mutex_unlock(&mtx);
+
         c=getch();
         switch(c) {
             case KEY_UP:
@@ -238,12 +247,16 @@ void* navicella(){
                 
                 //pthread_mutex_lock(&mtx);
                 if (isMissileVivo1==0 && isMissileVivo2==0){
+
                     valuesMissili msl1, msl2;
 
                     msl1.navx = msl2.navx = pos_navicella.x;
                     msl1.navy = msl2.navy = pos_navicella.y;
                     msl1.diry = PASSO;
                     msl2.diry = -PASSO;
+                    msl1.Tmissile = Tmissile1;
+                    msl2.Tmissile = Tmissile2;
+
                     pthread_create(&Tmissile1,NULL,missile,(void *)&msl1);
                     pthread_create(&Tmissile2,NULL,missile,(void *)&msl2);
 
@@ -269,6 +282,7 @@ void* nemiciPrimoLivello(void *arg){
     int x = tmp.x;
     int y = tmp.y;
     int idNemico = tmp.idNemico;
+    pthread_t threadCorrente = tmp.Tnemico;
 
     Position pos_nemico;
     pos_nemico.x=x;
@@ -280,21 +294,26 @@ void* nemiciPrimoLivello(void *arg){
     int r=1, dirx, diry, cicli=1;
 
     scriveNelBuffer(pos_nemico);
-    while(1){
-        dirx=-PASSO;
-        pos_nemico.x+=dirx;
+    while(1) {
 
-        if(r%2==0)
-            diry=PASSO;
+        if (threadCorrente == turnodimorireNemici) {
+            break;
+        }
+        dirx = -PASSO;
+        pos_nemico.x += dirx;
+
+        if (r % 2 == 0)
+            diry = PASSO;
         else
-            diry=-PASSO;
-        if(pos_nemico.y+diry<2 || pos_nemico.y+diry>=maxy)
-            diry=-diry;
-        pos_nemico.y+=diry;
+            diry = -PASSO;
+        if (pos_nemico.y + diry < 2 || pos_nemico.y + diry >= maxy)
+            diry = -diry;
+        pos_nemico.y += diry;
         r++;
 
 
-        if(!(cicli++%5)){
+
+        if (!(cicli++ % 5)) {
             /*pid_bomba=fork();
             switch(pid_bomba){
                 case -1:
@@ -308,22 +327,25 @@ void* nemiciPrimoLivello(void *arg){
 
             pthread_t Tbombacurrnt;
 
-            pos_nemico.Tthreadtokill=Tbombacurrnt;
+            pos_nemico.Tthreadtokill = Tbombacurrnt;
 
             valuesBomba vb;
 
-            vb.x_bomba=pos_nemico.x-1;
-            vb.y_bomba=pos_nemico.y+1;
-            vb.id=idNemico;
-            vb.threaddino=Tbombacurrnt;
-            pthread_create(&Tbombacurrnt,NULL,bomba,(void *)&vb);
+            vb.x_bomba = pos_nemico.x - 1;
+            vb.y_bomba = pos_nemico.y + 1;
+            vb.id = idNemico;
+            vb.threaddino = Tbombacurrnt;
+            pthread_create(&Tbombacurrnt, NULL, bomba, (void *) &vb);
             pthread_join(Tbombacurrnt, NULL);
 
         }
-        scriveNelBuffer(pos_nemico);
-        usleep(1200000);
+
+        int pthread_cancel(pthread_t threadCorrente);
     }
 }
+
+
+
 
 
 /**
@@ -554,13 +576,9 @@ void* controllo(){
                                 //elimino dallo schermo il missile e la bomba.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                                int pthread_cancel(pthread_t Tmissile1);
-                                } else {
-                                   int pthread_cancel(pthread_t Tmissile2); 
-                                }
+
+                                turnodimorire=missili[n].Tthreadtokill;
                                 
 
                                 //termino il processo che gestiva la bomba.
@@ -593,19 +611,8 @@ void* controllo(){
                                 //elimino dallo schermo il missile.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                                    mvprintw(1,2,"bestemmia");
-                                    int pthread_cancel(pthread_t Tmissile1);
-                                    refresh();
-                                    usleep(20000);
-                                } else {
-                                    mvprintw(1,2,"bestemmia");
-                                    int pthread_cancel(pthread_t Tmissile2);
-                                    refresh();
-                                    usleep(20000);
-                                }
+                                turnodimorire=missili[n].Tthreadtokill;
 
                                 //imposto le coordnate del missile dallo schermo.
                                 missili[n].x = -1;
@@ -653,13 +660,9 @@ void* controllo(){
                                 //elimino dallo schermo il missile.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                            int pthread_cancel(pthread_t Tmissile1);
-                            } else {
-                               int pthread_cancel(pthread_t Tmissile2); 
-                            }
+
+                                turnodimorire=missili[n].Tthreadtokill;
                                 
 
                                 //imposto le coordnate del missile dallo schermo.
@@ -700,13 +703,9 @@ void* controllo(){
                                 //elimino dallo schermo il missile.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                            int pthread_cancel(pthread_t Tmissile1);
-                            } else {
-                               int pthread_cancel(pthread_t Tmissile2); 
-                            }
+
+                                turnodimorire=missili[n].Tthreadtokill;
                                 
 
                                 //imposto le coordnate del missile dallo schermo.
@@ -747,13 +746,9 @@ void* controllo(){
                                 //elimino dallo schermo il missile.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                            int pthread_cancel(pthread_t Tmissile1);
-                            } else {
-                               int pthread_cancel(pthread_t Tmissile2); 
-                            }
+
+                                turnodimorire=missili[n].Tthreadtokill;
                                 
 
                                 //imposto le coordnate del missile dallo schermo.
@@ -794,13 +789,11 @@ void* controllo(){
                                 //elimino dallo schermo il missile.
                                 mvaddch(missili[n].y, missili[n].x, ' ');
                                 //termino il processo che gestiva il missile.
-                                
 
-                                if(n==0){
-                            int pthread_cancel(pthread_t Tmissile1);
-                            } else {
-                               int pthread_cancel(pthread_t Tmissile2); 
-                            }
+
+
+                                turnodimorire=missili[n].Tthreadtokill;
+
                                 
 
                                 //imposto le coordnate del missile dallo schermo.
@@ -836,6 +829,7 @@ void* controllo(){
                                 nemico[i].y=-10;
 
                                 //termino il processo che gestiva i nemici.
+                                turnodimorireNemici=nemico[i].Tthreadtokill;
                                 
 
                                 //kill(nemico[i].pid, 1);
@@ -870,6 +864,7 @@ void* controllo(){
                         bombe[i].x=-1;
                         bombe[i].y=-1;
                         //termino il processo che gestisce la bomba.
+                        pthread_cancel(bombe[i].Tthreadtokill);
                     }
                 }
                 //in base alle vite rimaste ambio lo sprite della navicella.
@@ -894,7 +889,7 @@ void* controllo(){
                 }
                 attron(COLOR_PAIR(1));
                 break;
-            /*case BombaAvanzata:
+            case BombaAvanzata:
                 if(statoNemico[valore_letto.id]==1){
                     //cambio del colore per la stampa della bomba.
                     attron(COLOR_PAIR(2));
@@ -915,7 +910,7 @@ void* controllo(){
                             bombeAvanzate[i].x=-1;
                             bombeAvanzate[i].y=-1;
                             //termino il processo che gestisce la bomba.
-                            kill(bombeAvanzate[i].pid, 1);
+                            pthread_cancel(bombe[i].Tthreadtokill);
                         }
                     }
                     //in base alle vite rimaste ambio lo sprite della navicella.
@@ -940,7 +935,7 @@ void* controllo(){
                     }
                     attron(COLOR_PAIR(1));
                 }
-                break;*/
+                break;
         }
         //ogni tot cicli i punti vengono decrementati.
         if(!(cicli++%500)){
@@ -1005,6 +1000,7 @@ void *missile(void *arg){
     int navx = tmp.navx;
     int navy = tmp.navy;
     int diry = tmp.diry;
+    pthread_t threadCorrente = tmp.Tmissile;
     Position pos_missile;
     pos_missile.x=5+navx;
     pos_missile.y=1+navy;
@@ -1027,14 +1023,21 @@ void *missile(void *arg){
         scriveNelBuffer(pos_missile);
         usleep(10000);
         i++;
+
+        if (threadCorrente == turnodimorire) {
+            break;
+        }
     }
 
     int status=0;
     pthread_mutex_lock(&mtx);
     isMissileVivo1=0;
     isMissileVivo2=0;
-    void pthread_exit(void *status);
     pthread_mutex_unlock(&mtx);
+    //void pthread_exit(void *status);
+    turnodimorire=-1;
+    int pthread_cancel(pthread_t threadCorrente);
+
     //kill(getpid(),SIGKILL);
     //exit(1);
 }
@@ -1053,6 +1056,7 @@ void *bomba(void *arg){
     pos_bomba.y=y_bomba;
     pos_bomba.i=Bomba;
     pos_bomba.id=id;
+    pos_bomba.Tthreadtokill=threaddino;
 
 
     scriveNelBuffer(pos_bomba);
@@ -1070,10 +1074,10 @@ void *bomba(void *arg){
 //come la Write
 void scriveNelBuffer(Position oggetto){
     sem_wait(&libere);
-    pthread_mutex_lock(&mtx);
+    pthread_mutex_lock(&mtxBuffer);
         buffer[posScrittura] = oggetto;
         posScrittura = (posScrittura + 1)%MAX;
-    pthread_mutex_unlock(&mtx);
+    pthread_mutex_unlock(&mtxBuffer);
     sem_post(&piene);
 }
 
@@ -1081,10 +1085,10 @@ void scriveNelBuffer(Position oggetto){
 Position leggeDalBuffer(){
     Position tmp;
     sem_wait(&piene);
-    pthread_mutex_lock(&mtx);
+    pthread_mutex_lock(&mtxBuffer);
         tmp = buffer[posLettura];
         posLettura = (posLettura + 1)%MAX;
-    pthread_mutex_unlock(&mtx);
+    pthread_mutex_unlock(&mtxBuffer);
     sem_post(&libere);
     return tmp;
 }
