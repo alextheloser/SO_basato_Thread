@@ -203,7 +203,7 @@ void* navicella(){
     pos_navicella.i=Navicella;
     //pthread_mutex_unlock(&mtx);
     //pid_t pid_missile1, pid_missile2;
-    int isMissileVivo1=0, isMissileVivo2=0, sig1, sig2, c;
+    int sig1, sig2, c;
 
     pthread_t Tmissile1;
     pthread_t Tmissile2;
@@ -212,14 +212,8 @@ void* navicella(){
     int culo1;
     int culo2;
     while(1) {
-        pthread_mutex_lock(&mtx);
-        if(isMissileVivo1==1 || isMissileVivo2==1){
-            pthread_join(Tmissile1, NULL);
-            pthread_join(Tmissile2, NULL);
-            //usleep(30000);
-        }
-        pthread_mutex_unlock(&mtx);
-        timeout(100);
+
+        //timeout(100);
         c=getch();
         switch(c) {
             case KEY_UP:
@@ -236,10 +230,15 @@ void* navicella(){
             case ' ':
                 //if(waitpid(pid_missile1,&sig1,WNOHANG)==pid_missile1){mvprintw(10,10,"SMEGMA");}
                 // if(waitpid(pid_missile2,&sig2,WNOHANG)==pid_missile2){mvprintw(14,14,"BORRA");}
-                
-                pthread_mutex_lock(&mtx);
-                if (isMissileVivo1==0 && isMissileVivo2==0){
+
+                if(isMissileVivo1==0 && isMissileVivo2==0) {
                     //pthread_mutex_unlock(&mtx);
+
+                    pthread_mutex_lock(&mtx);
+                    isMissileVivo2=1;
+                    isMissileVivo1=1;
+                    pthread_mutex_unlock(&mtx);
+
                     valuesMissili msl1, msl2;
                     msl1.navx = msl2.navx = pos_navicella.x;
                     msl1.navy = msl2.navy = pos_navicella.y;
@@ -249,10 +248,13 @@ void* navicella(){
                     pthread_create(&Tmissile2,NULL,missile,(void *)&msl2);
                     msl1.Tmissile = Tmissile1;
                     msl2.Tmissile = Tmissile2;
-                } pthread_mutex_unlock(&mtx);
+                }
                 break;
         }
         scriveNelBuffer(pos_navicella);
+
+
+
     }
 }
 
@@ -376,6 +378,8 @@ void* controllo(){
         mvprintw(1, i, "-");
     }
     do{
+        mvprintw(2,2,"ism1 = %d     ",isMissileVivo1);
+        mvprintw(3,2,"ism2 = %d     ",isMissileVivo2);
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
         /*pthread_mutex_lock(&mtx);
@@ -996,14 +1000,17 @@ void* controllo(){
 
 
 void *missile(void *arg){
-    pthread_mutex_lock(&mtx);
-    isMissileVivo1=1;
-    isMissileVivo2=1;
-    pthread_mutex_unlock(&mtx);
     valuesMissili tmp = *(valuesMissili *)arg;
     int navx = tmp.navx;
     int navy = tmp.navy;
     int diry = tmp.diry;
+    /*pthread_mutex_lock(&mtx);
+    if(diry==1){
+        isMissileVivo1=1;
+    } else if(diry==-1){
+        isMissileVivo2=1;
+    }
+    pthread_mutex_unlock(&mtx);*/
     pthread_t threadCorrente = tmp.Tmissile;
     Position pos_missile;
     pos_missile.x=5+navx;
@@ -1018,7 +1025,7 @@ void *missile(void *arg){
     }
     int i=0;
     scriveNelBuffer(pos_missile);
-    while(!(pos_missile.x>maxx)) {
+    while(1) {
         if (pos_missile.y + diry > maxy || pos_missile.y + diry < 2) { diry = -diry; }
         if (i % 6 == 0) {
             pos_missile.y += diry;
@@ -1029,7 +1036,7 @@ void *missile(void *arg){
         i++;
 
         pthread_mutex_lock(&mtx);
-        if (threadCorrente == turnodimorire) {
+        if ((threadCorrente == turnodimorire) || (pos_missile.x>maxx)) {
             turnodimorire=-1;
             pthread_mutex_unlock(&mtx);
             break;
@@ -1039,9 +1046,9 @@ void *missile(void *arg){
 
     //int status=0;
     pthread_mutex_lock(&mtx);
-    usleep(20000);
-    isMissileVivo1=0;
-    isMissileVivo2=0;
+    //usleep(20000);
+        isMissileVivo1=0;
+        isMissileVivo2=0;
     pthread_mutex_unlock(&mtx);
     //void pthread_exit(void *status);
     int pthread_cancel(pthread_t threadCorrente);
@@ -1075,6 +1082,7 @@ void *bomba(void *arg){
         usleep(30000);
         pthread_mutex_lock(&mtx);
         if(turnodimorireBomba==threaddino){
+            turnodimorireBomba=-1;
             pthread_mutex_unlock(&mtx);
             break;
         }
