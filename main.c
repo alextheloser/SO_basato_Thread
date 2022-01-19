@@ -15,6 +15,7 @@
 pthread_t turnodimorire=-1;
 pthread_t turnodimorireNemici=-1;
 pthread_t turnodimorireBomba=-1;
+pthread_t turnodimorireNavicella=-1;
 
 typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
 
@@ -27,7 +28,7 @@ typedef struct{
 }Position;
 
 
-int menu();
+int menu(int maxx, int maxy);
 void *navicella();
 void *nemiciPrimoLivello(void *arg);
 void *controllo();
@@ -63,7 +64,7 @@ char SpriteNavicellaMorta[6][6]={
 
 char SpriteNemicoBase[4][4]={
         " /\\",
-        "<OO",
+        "<O(",
         " \\/"};
 
 char SpriteNemicoMorente[4][4]={
@@ -72,28 +73,44 @@ char SpriteNemicoMorente[4][4]={
         " xx"};
 
 char SpriteNemicoAvanzato[4][4]={
-        "< <",
-        "   ",
-        "< <"};
-
-char SpriteNemicoAvanzatoMorente[4][4]={
-        "x x",
-        "   ",
-        "x x"};
+        " /",
+        "<:(",
+        " \\"};
 
 char SpriteMissile='>';
 
 char SpriteBomba='@';
 
-char logo[4][4]={
-        "123",
-        "456",
-        "789"
-};
+char logo[8][150]={".d88888b                                      888888ba           .8888b                         dP                            ",
+                   "88.    \"'                                     88    `8b          88   \"                         88                            ",
+                   "`Y88888b. 88d888b. .d8888b. .d8888b. .d8888b. 88     88 .d8888b. 88aaa  .d8888b. 88d888b. .d888b88 .d8888b. 88d888b. .d8888b. ",
+                   "      `8b 88'  `88 88'  `88 88'  `\"\" 88ooood8 88     88 88ooood8 88     88ooood8 88'  `88 88'  `88 88ooood8 88'  `88 Y8ooooo. ",
+                   "d8'   .8P 88.  .88 88.  .88 88.  ... 88.  ... 88    .8P 88.  ... 88     88.  ... 88    88 88.  .88 88.  ... 88             88 ",
+                   " Y88888P  88Y888P' `88888P8 `88888P' `88888P' 8888888P  `88888P' dP     `88888P' dP    dP `88888P8 `88888P' dP       `88888P' ",
+                   "          88                                                                                                                  ",
+                   "          dP                                                                                                                  "};
+
+char gameover[7][100]={"  .oooooo.                                               .oooooo.                                  ",
+                       " d8P'  `Y8b                                             d8P'  `Y8b                                 ",
+                       "888            .oooo.   ooo. .oo.  .oo.    .ooooo.     888      888 oooo    ooo  .ooooo.  oooo d8b ",
+                       "888           `P  )88b  `888P\"Y88bP\"Y88b  d88' `88b    888      888  `88.  .8'  d88' `88b `888\"\"8P ",
+                       "888     ooooo  .oP\"888   888   888   888  888ooo888    888      888   `88..8'   888ooo888  888     ",
+                       "`88.    .88'  d8(  888   888   888   888  888    .o    `88b    d88'    `888'    888    .o  888     ",
+                       " `Y8bood8P'   `Y888\"\"8o o888o o888o o888o `Y8bod8P'     `Y8bood8P'      `8'     `Y8bod8P' d888b    "};
+
+char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo     oooo                       .o. ",
+                     " `888.   .8'                            `888.    `888.     .8'                        888 ",
+                     "  `888. .8'    .ooooo.  oooo  oooo       `888.   .8888.   .8'    .ooooo.  ooo. .oo.   888 ",
+                     "   `888.8'    d88' `88b `888  `888        `888  .8'`888. .8'    d88' `88b `888P\"Y88b  Y8P ",
+                     "    `888'     888   888  888   888         `888.8'  `888.8'     888   888  888   888  `8' ",
+                     "     888      888   888  888   888          `888'    `888'      888   888  888   888  .o. ",
+                     "    o888o     `Y8bod8P'  `V88V\"V8P'          `8'      `8'       `Y8bod8P' o888o o888o Y8P"};
 
 
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mtxBuffer = PTHREAD_MUTEX_INITIALIZER;
+
+
 
 int maxx, maxy, posLettura =0, posScrittura =0, valoreDifficolta=1;
 sem_t piene,libere;
@@ -120,20 +137,60 @@ typedef struct {
     pthread_t threaddino;
 }valuesBomba;
 
+pthread_t Tnavicella;
 
 int isMissileVivo1=0;
 int isMissileVivo2=0;
 
 int main() {
     int filedes[2], i, j=0, x_nemici, y_nemici, numColonne=1;
-    pid_t pid_navicella, pid_nemici[numNemici];
 
     initscr();
     noecho();
     cbreak();
-    keypad(stdscr, 1); //funzione per leggere i tasti della tastiera
+    keypad(stdscr, 1); //funzione per leggere i tasti della tastiera.
     curs_set(0);
-    srand((int)time(NULL));
+
+    //impostazioni dei colori.
+    start_color();
+    init_color(80, 255, 0, 0);
+    init_pair(1,COLOR_WHITE,COLOR_BLACK);
+    init_pair(2, COLOR_RED, COLOR_BLACK);
+    init_pair(3, COLOR_CYAN, COLOR_BLACK);
+    attron(COLOR_PAIR(1));
+
+    //viene presa la dimensione delo schermo.
+    getmaxyx(stdscr, maxy, maxx);
+    x_nemici=maxx-7;
+    y_nemici=3;
+
+    //menù iniziale.
+    int valoreDifficolta = menu(maxx,maxy);
+
+    clear();
+    refresh();
+
+    //in base al valore di ritorno del menù viene impostato il numero di nemici.
+    switch(valoreDifficolta){
+        case 0:
+            numNemici=1;
+            break;
+
+        case 1:
+            numNemici=10;
+            break;
+
+        case 2:
+            numNemici=15;
+            break;
+
+        case 3:
+            numNemici=0;
+            break;
+    }
+
+
+
 
     getmaxyx(stdscr, maxy, maxx);
     x_nemici=maxx-5;
@@ -145,9 +202,7 @@ int main() {
     
     sem_init(&piene,0,0);
     sem_init(&libere,0,MAX);
-    
-    pthread_t Tnavicella;
-    pthread_t Tcontrollo;
+
     //Creare questa roba in un loop con tante variabili per ogni nemico
 
     pthread_t Tnemico[numNemici];
@@ -162,8 +217,22 @@ int main() {
     //generazione dei thread che si occupano della generazione delle coordinate dei nemici.
     for(i=0; i<numNemici; i++){
 
-        nemico[i].x = 30+10*i;
-        nemico[i].y = 10+10*i;
+        j++;
+        //aggiornamento delle coordinate iniziali del prossimo nemico da generare.
+        y_nemici=y_nemici+15;
+        if(j>3 || y_nemici+7>maxy){
+            j=0;
+            x_nemici-=9;
+            if(numColonne%2==0)
+                y_nemici=3;
+            else
+                y_nemici=10;
+            numColonne++;
+        }
+
+
+        nemico[i].x = x_nemici;
+        nemico[i].y = y_nemici;
         nemico[i].idNemico=i;
         nemico[i].Tnemico=Tnemico[i];
 
@@ -175,13 +244,11 @@ int main() {
     controllo();
 
     pthread_join(Tnavicella, NULL);
-    //pthread_join(Tcontrollo, NULL);
+
     for(i=0; i<numNemici; i++) {
         pthread_join(Tnemico[i], NULL);
     }
-
-
-
+    
     endwin();
     exit(0);
 }
@@ -213,9 +280,10 @@ void* navicella(){
     int culo2;
     while(1) {
 
-        //timeout(100);
-        c=getch();
-        switch(c) {
+
+        timeout(100);
+        c = getch();
+        switch (c) {
             case KEY_UP:
                 if (pos_navicella.y > 2) {
                     pos_navicella.y--;
@@ -231,12 +299,12 @@ void* navicella(){
                 //if(waitpid(pid_missile1,&sig1,WNOHANG)==pid_missile1){mvprintw(10,10,"SMEGMA");}
                 // if(waitpid(pid_missile2,&sig2,WNOHANG)==pid_missile2){mvprintw(14,14,"BORRA");}
 
-                if(isMissileVivo1==0 && isMissileVivo2==0) {
+                if (isMissileVivo1 == 0 && isMissileVivo2 == 0) {
                     //pthread_mutex_unlock(&mtx);
 
                     pthread_mutex_lock(&mtx);
-                    isMissileVivo2=1;
-                    isMissileVivo1=1;
+                    isMissileVivo2 = 1;
+                    isMissileVivo1 = 1;
                     pthread_mutex_unlock(&mtx);
 
                     valuesMissili msl1, msl2;
@@ -244,18 +312,41 @@ void* navicella(){
                     msl1.navy = msl2.navy = pos_navicella.y;
                     msl1.diry = PASSO;
                     msl2.diry = -PASSO;
-                    pthread_create(&Tmissile1,NULL,missile,(void *)&msl1);
-                    pthread_create(&Tmissile2,NULL,missile,(void *)&msl2);
+                    pthread_create(&Tmissile1, NULL, missile, (void *) &msl1);
+                    pthread_create(&Tmissile2, NULL, missile, (void *) &msl2);
                     msl1.Tmissile = Tmissile1;
                     msl2.Tmissile = Tmissile2;
                 }
                 break;
         }
+
+        pthread_mutex_lock(&mtx);
+        if (isMissileVivo1 == 1) {
+            pthread_mutex_unlock(&mtx);
+            pthread_detach(Tmissile1);
+        }
+        pthread_mutex_unlock(&mtx);
+        pthread_mutex_lock(&mtx);
+        if (isMissileVivo2 == 1) {
+            pthread_mutex_unlock(&mtx);
+            pthread_detach(Tmissile2);
+        }
+        pthread_mutex_unlock(&mtx);
+
         scriveNelBuffer(pos_navicella);
 
-
-
+        pthread_mutex_lock(&mtx);
+        if(turnodimorireNavicella==Tnavicella){
+            turnodimorireNavicella=Tnavicella;
+            pthread_mutex_unlock(&mtx);
+            break;
+        }
+        pthread_mutex_unlock(&mtx);
     }
+    clear();
+
+    int pthread_cancel(pthread_t Tnavicella);
+
 }
 
 /**
@@ -280,6 +371,7 @@ void* nemiciPrimoLivello(void *arg){
     pos_nemico.y=y;
     pos_nemico.i=Nemico;
     pos_nemico.id=idNemico;
+    pos_nemico.Tthreadtokill=threadCorrente;
     //pos_nemico.pid=getpid();
     //pid_t pid_bomba;
     int r=1, dirx, diry, cicli=1;
@@ -287,11 +379,12 @@ void* nemiciPrimoLivello(void *arg){
     scriveNelBuffer(pos_nemico);
     while(1) {
         pthread_mutex_lock(&mtx);
-        if (threadCorrente == turnodimorireNemici) {
+        if(turnodimorireNemici==threadCorrente){
+            turnodimorireNemici=-1;
             pthread_mutex_unlock(&mtx);
             break;
-        }
-        pthread_mutex_unlock(&mtx);
+        }pthread_mutex_unlock(&mtx);
+
         dirx = -PASSO;
         pos_nemico.x += dirx;
 
@@ -307,6 +400,7 @@ void* nemiciPrimoLivello(void *arg){
         usleep(1200000);
 
 
+
         if (!(cicli++ % 5)) {
             /*pid_bomba=fork();
             switch(pid_bomba){
@@ -320,27 +414,20 @@ void* nemiciPrimoLivello(void *arg){
             }*/
 
             pthread_t Tbombacurrnt;
-
             pos_nemico.Tthreadtokill = Tbombacurrnt;
-
             valuesBomba vb;
-
             vb.x_bomba = pos_nemico.x - 1;
             vb.y_bomba = pos_nemico.y + 1;
             vb.id = idNemico;
             vb.threaddino = Tbombacurrnt;
+
             pthread_create(&Tbombacurrnt, NULL, bomba, (void *) &vb);
+
             pthread_join(Tbombacurrnt, NULL);
-
         }
-        turnodimorireNemici=-1;
-        int pthread_cancel(pthread_t threadCorrente);
     }
+    int pthread_cancel(pthread_t threadCorrente);
 }
-
-
-
-
 
 /**
  * Funzione che si occupa della stampa dei vari elementi a schermo e delle collisioni
@@ -831,9 +918,8 @@ void* controllo(){
                                 //termino il processo che gestiva i nemici.
                                 pthread_mutex_lock(&mtx);
                                 turnodimorireNemici=nemico[i].Tthreadtokill;
+                                //mvprintw(10,30,"ciao: %d",turnodimorire);
                                 pthread_mutex_unlock(&mtx);
-                                //kill(nemico[i].pid, 1);
-
                                 //aggiorno lo schermo.
                                 refresh();
                                 //modifico lo stato del nemico colpito da secondo livello a distrutto.
@@ -958,6 +1044,9 @@ void* controllo(){
         refresh();
     }while(vite>0 && nemiciVivi>0); //ciclo termina quando la navicella non ha più vite oppure quando tutti i nemici sono stati distrutti.
 
+    pthread_mutex_lock(&mtx);
+    turnodimorireNavicella=Tnavicella;
+    pthread_mutex_unlock(&mtx);
     //pulisco lo schermo.
     clear();
     int exit=0;
@@ -965,13 +1054,13 @@ void* controllo(){
     if(vite==0 && nemiciVivi>0){
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
-           // mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
+           mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
         }
         attron(COLOR_PAIR(1));
         while(exit!=32){
-        mvprintw(maxy/2-2, maxx/2-15,"Perso Hai totalizzato %d punti", punti);
+        mvprintw(maxy/2-2, maxx/2-15,"Hai totalizzato %d punti", punti);
         mvprintw(maxy/2, maxx/2-15,"Premi spazio per uscire");
-        timeout(100);
+        timeout(1000);
         exit=getch();
         refresh();
     }
@@ -983,18 +1072,22 @@ void* controllo(){
         //pthread_mutex_unlock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
-            //mvprintw(maxy/2-10+i, maxx/2-50, youwon[i]);
+            mvprintw(maxy/2-10+i, maxx/2-50, youwon[i]);
         }
         attron(COLOR_PAIR(1));
         while(exit!=32){
-        mvprintw(maxy/2-2, maxx/2-13,"Vinto Hai totalizzato %d punti", punti);
+        mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
         mvprintw(maxy/2, maxx/2-15,"Premi spazio per uscire");
-        timeout(100);
+        timeout(1000);
         exit=getch();
         refresh();
         }
-    }//pthread_mutex_unlock(&mtx);
-
+    }
+    /*clear();
+    mvprintw(1,1,"siamo usciti da tutte le condizioni");
+    refresh();
+    usleep(222222222);*/
+    //pthread_mutex_unlock(&mtx);
 }
 
 
@@ -1114,4 +1207,181 @@ Position leggeDalBuffer(){
     pthread_mutex_unlock(&mtxBuffer);
     sem_post(&libere);
     return tmp;
+}
+
+/**
+ * Funzione che si occupa del menù iniziale del gioco.
+ * @param maxx Massimo valore delle X sullo schermo.
+ * @param maxy Massimo valore delle Y sullo schermo.
+ * @return Numero che identifica la selezione della difficoltà.
+ */
+int menu(int maxx, int maxy){
+    //nel caso in cui lo schermo sia troppo piccolo viene visualizzato questo messaggio
+    if(maxx<140 || maxy<20){
+        while(1){
+            mvprintw(1,1,"Risoluzione troppo bassa");
+            mvprintw(2,1,"Prova a passare a schermo intero");
+            mvprintw(3,1,"Ridimensiona e riesegui :(");
+            refresh();
+        }
+    }
+    int isAnimationDone=0, scelta, numScelta=0, i, j=0;
+    while(1){
+        //stampa della linea superiore
+        attron(COLOR_PAIR(1));
+        mvprintw(0, 1, "SpaceDefenders");
+        mvprintw(0, (maxx/2)-33, "SpaceDefenders      Andrea Martis / Alessio Largiu      Unica 2021");
+
+        for(i=0; i<maxx; i++){
+            mvprintw(1, i, "-");
+        }
+
+        //stampa del logo
+        if(isAnimationDone==0){
+
+            usleep(10000);
+            for(i=8; i<15; i++){
+                attron(COLOR_PAIR(2));
+                for (j = 0; j < 8; j++) {
+                    mvprintw(i+j, (maxx/2)-63, logo[j]);
+                }
+                for (j = 0; j < 8; j++) {
+                    mvprintw(i+j-6,  (maxx/2)-63, "                                                                                                                               ");
+                }
+                usleep(80000);
+                refresh();
+            }
+            attron(COLOR_PAIR(1));
+        }
+
+        attron(COLOR_PAIR(3));
+        for (j = 0; j < 8; j++) {
+            mvprintw(i+j-1,  (maxx/2)-63, logo[j]);
+        }
+
+        //stampa della prima banda orizzontale
+        attron(COLOR_PAIR(2));
+        for(i=0; i<maxx; i++){
+            mvprintw(22, i, "+");
+            mvprintw(23, i, "+");
+            if(isAnimationDone==0){
+                usleep(7000);
+                refresh();
+            }
+        }
+        attron(COLOR_PAIR(1));
+
+        //stampa selezione della difficoltà
+        if(isAnimationDone==1){
+            mvprintw(25, (maxx/2)-16, "Seleziona la modalita' di gioco");
+
+            mvprintw(27, (maxx/2)-4, "Facile");
+            mvprintw(28, (maxx/2)-4, "Medio");
+            mvprintw(29, (maxx/2)-4, "Difficile");
+            mvprintw(30, (maxx/2)-4, "Esci");
+
+
+            switch(scelta){
+                case KEY_UP:
+                    numScelta--;
+                    if(numScelta<0){
+                        numScelta=3;
+                    }
+                    break;
+
+                case KEY_DOWN:
+                    numScelta++;
+
+                    if(numScelta>3){
+                        numScelta=0;
+                    }
+                    break;
+
+                case 10:
+                    return numScelta;
+                    break;
+            }
+
+            //stampa del cursore
+            attron(COLOR_PAIR(3));
+            //int miStoComplicandoLaVita=0;
+            for(j=0; j<=3; j++){
+                if(j==numScelta){
+                    mvprintw(27+j, (maxx/2)-6, ">");
+                } else {
+                    mvprintw(27+j, (maxx/2)-6, " ");
+                }
+            }
+            attron(COLOR_PAIR(1));
+
+        }
+
+        //stampa della seconda banda orizzontale
+        attron(COLOR_PAIR(3));
+        for(i=maxx; i>=0; i--){
+            mvprintw(32, i, "+");
+            mvprintw(33, i, "+");
+            if(isAnimationDone==0){
+                usleep(7000);
+                refresh();
+            }
+        }
+        attron(COLOR_PAIR(1));
+
+        //animazione della navicella e del nemico
+        if(isAnimationDone==0){
+            for (i = 0; i < 3; i++) {
+                mvprintw(4 + i, 10, SpriteNavicella[i]);
+            }
+
+            for (i = 0; i < 3; i++) {
+                mvprintw(4 + i, 132, SpriteNemicoBase[i]);
+            }
+
+            for(i=0;i<=117;i++){
+                mvprintw(5, 16+i, ">");
+                usleep(20000);
+                mvprintw(5, 16+i-1, " ");
+                refresh();
+
+            }
+
+            mvprintw(5,133," ");
+
+            for (i = 0; i < 3; i++) {
+                mvprintw(4 + i, 132, SpriteNemicoMorente[i]);
+            }
+            refresh();
+            usleep(200000);
+            for (i = 0; i < 3; i++) {
+                mvprintw(4 + i, 132, "    ");
+            }
+            refresh();
+            for(j=0; j<(maxx/2);j++){
+                for (i = 0; i < 3; i++) {
+                    mvprintw(4 + i, j+10, SpriteNavicella[i]);
+                }
+                for (i = 0; i < 3; i++) {
+                    mvprintw(4 + i, 2-j+10, "    ");
+                }
+                refresh();
+                usleep(10000);
+            }
+        }
+
+        if(isAnimationDone==1){
+            for (i = 0; i < 3; i++) {
+                mvprintw(4 + i, maxx/2+10, SpriteNavicella[i]);
+            }
+
+        }
+
+        timeout(100);
+        scelta=getch();
+
+        usleep(10000);
+
+        refresh();
+        isAnimationDone=1;
+    }
 }
