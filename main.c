@@ -14,7 +14,7 @@
 #define MAX 4316
 
 pthread_t turnodimorire=-1;
-pthread_t turnodimorireNemici=-1;
+int turnodimorireNemici=-1;
 pthread_t turnodimorireBomba=-1;
 pthread_t turnodimorireNavicella=-1;
 
@@ -206,8 +206,6 @@ int main() {
 
     //Creare questa roba in un loop con tante variabili per ogni nemico
 
-    pthread_t Tnemico[numNemici];
-
     pthread_create(&Tnavicella,NULL,navicella,NULL);
     //
 
@@ -297,9 +295,6 @@ void* navicella(){
 
                 break;
             case ' ':
-                //if(waitpid(pid_missile1,&sig1,WNOHANG)==pid_missile1){mvprintw(10,10,"SMEGMA");}
-                // if(waitpid(pid_missile2,&sig2,WNOHANG)==pid_missile2){mvprintw(14,14,"BORRA");}
-
                 if (isMissileVivo1 == 0 && isMissileVivo2 == 0) {
                     //pthread_mutex_unlock(&mtx);
 
@@ -372,19 +367,20 @@ void* nemiciPrimoLivello(void *arg){
     pos_nemico.y=y;
     pos_nemico.i=Nemico;
     pos_nemico.id=idNemico;
-    pos_nemico.Tthreadtokill=threadCorrente;
+    pos_nemico.Tthreadtokill = pthread_self();
     //pos_nemico.pid=getpid();
     //pid_t pid_bomba;
     int r=1, dirx, diry, cicli=1;
 
     scriveNelBuffer(pos_nemico);
-    while(1) {
-        pthread_mutex_lock(&mtx);
-        if(turnodimorireNemici==threadCorrente){
-            turnodimorireNemici=-1;
-            pthread_mutex_unlock(&mtx);
-            break;
-        }pthread_mutex_unlock(&mtx);
+    pthread_mutex_lock(&mtx);
+
+    while(idNemico!=turnodimorireNemici) {
+        pthread_mutex_unlock(&mtx);
+
+        mvprintw(2+idNemico,2,"                 turnodimorirenemico %d,  %d         ",turnodimorireNemici,threadCorrente);
+
+
 
         dirx = -PASSO;
         pos_nemico.x += dirx;
@@ -427,6 +423,12 @@ void* nemiciPrimoLivello(void *arg){
             pthread_join(Tbombacurrnt, NULL);
         }
     }
+    mvprintw(1,1,"SONO USCITO DAL WHILE!          ");
+    refresh();
+    pthread_mutex_unlock(&mtx);
+    pthread_mutex_lock(&mtx);
+    turnodimorireNemici=-1;
+    pthread_mutex_unlock(&mtx);
     int pthread_cancel(pthread_t threadCorrente);
 }
 
@@ -921,6 +923,7 @@ void* controllo(){
                                 turnodimorireNemici=nemico[i].Tthreadtokill;
                                 //mvprintw(10,30,"ciao: %d",turnodimorire);
                                 pthread_mutex_unlock(&mtx);
+                                //pthread_join(nemico[i].Tthreadtokill, NULL);
                                 //aggiorno lo schermo.
                                 refresh();
                                 //modifico lo stato del nemico colpito da secondo livello a distrutto.
