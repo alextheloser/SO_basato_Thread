@@ -111,8 +111,6 @@ char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo    
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mtxBuffer = PTHREAD_MUTEX_INITIALIZER;
 
-
-
 int maxx, maxy, posLettura =0, posScrittura =0, valoreDifficolta=1;
 sem_t piene,libere;
 Position buffer[MAX];
@@ -136,6 +134,7 @@ typedef struct {
     int y_bomba;
     int id;
     pthread_t threaddino;
+    identity i;
 }valuesBomba;
 
 pthread_t Tnavicella;
@@ -191,8 +190,6 @@ int main() {
     }
 
 
-
-
     getmaxyx(stdscr, maxy, maxx);
     x_nemici=maxx-5;
     y_nemici=3;
@@ -210,11 +207,18 @@ int main() {
     //
 
     valuesNemici nemico[numNemici];
-
+    pthread_t Tnemico[numNemici];
     //pthread_create(&Tnemico,NULL,nemiciPrimoLivello,(void *)&nemico1);
 
     //generazione dei thread che si occupano della generazione delle coordinate dei nemici.
     for(i=0; i<numNemici; i++){
+
+        nemico[i].x = x_nemici;
+        nemico[i].y = y_nemici;
+        nemico[i].idNemico=i;
+        nemico[i].Tnemico=Tnemico[i];
+
+        pthread_create(&Tnemico[i],NULL,nemiciPrimoLivello,(void *)&nemico[i]);
 
         j++;
         //aggiornamento delle coordinate iniziali del prossimo nemico da generare.
@@ -229,13 +233,6 @@ int main() {
             numColonne++;
         }
 
-
-        nemico[i].x = x_nemici;
-        nemico[i].y = y_nemici;
-        nemico[i].idNemico=i;
-        nemico[i].Tnemico=Tnemico[i];
-
-        pthread_create(&Tnemico[i],NULL,nemiciPrimoLivello,(void *)&nemico[i]);
 
     }
     //pthread_create(&Tcontrollo,NULL,controllo,NULL);
@@ -352,6 +349,7 @@ void* nemiciPrimoLivello(void *arg){
     //pos_nemico.pid=getpid();
     //pid_t pid_bomba;
     int r=1, dirx, diry, cicli=1;
+    pthread_t Tbombacurrnt1, Tbombacurrnt2;
 
     scriveNelBuffer(pos_nemico);
     pthread_mutex_lock(&mtx);
@@ -385,7 +383,8 @@ void* nemiciPrimoLivello(void *arg){
             vb[1].threaddino = Tbombacurrnt2;
             pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
 
-            pthread_join(Tbombacurrnt, NULL);
+            pthread_join(Tbombacurrnt1, NULL);
+            pthread_join(Tbombacurrnt2, NULL);
         }
     }
     pthread_mutex_unlock(&mtx);
@@ -517,6 +516,7 @@ void* controllo(){
                 //controllo se il nemico letto ha raggiunto la navicella (condizione per perdere).
                 if(nemico[valore_letto.id].x<2){
                     //imposto le vite della navicella a zero.
+                    pthread_mutex_lock(&mtx);
                     vite=0;
                     pthread_mutex_unlock(&mtx);
                 }
@@ -881,7 +881,8 @@ void* controllo(){
 
                                 //termino il processo che gestiva i nemici.
                                 pthread_mutex_lock(&mtx);
-                                turnodimorireNemici=nemico[i].Tthreadtokill;
+                                //pthread_cancel(nemico[i].Tthreadtokill);
+                                turnodimorireNemici=nemico[i].id;
                                 //mvprintw(10,30,"ciao: %d",turnodimorire);
                                 pthread_mutex_unlock(&mtx);
                                 //pthread_join(nemico[i].Tthreadtokill, NULL);
@@ -910,11 +911,12 @@ void* controllo(){
                        || (navicella.x==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y+2==bombe[i].y)){
                         //la navicella quando colpita da una bomba perde una vita.
                         vite--;
-                        //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
-                        bombe[i].x=-1;
-                        bombe[i].y=-1;
-                        //termino il processo che gestisce la bomba.
                         pthread_mutex_lock(&mtx);
+
+                        //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
+                        bombe[i].x=-4;
+                        bombe[i].y=-4;
+                        //termino il processo che gestisce la bomba.
                         turnodimorireBomba=bombe[i].Tthreadtokill;
                         pthread_mutex_unlock(&mtx);
                     }
@@ -958,11 +960,13 @@ void* controllo(){
                            || (navicella.x==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y)){
                             //la navicella qkill(uando colpita da una bomba perde una vita.
                             vite--;
-                            //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
-                            bombeAvanzate[i].x=-1;
-                            bombeAvanzate[i].y=-1;
-                            //termino il processo che gestisce la bomba.
                             pthread_mutex_lock(&mtx);
+
+                            //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
+                            bombeAvanzate[i].x=-4;
+                            bombeAvanzate[i].y=-4;
+                            //termino il processo che gestisce la bomba.
+
                             turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
                             pthread_mutex_unlock(&mtx);
                         }
@@ -1012,24 +1016,36 @@ void* controllo(){
     pthread_mutex_lock(&mtx);
     turnodimorireNavicella=Tnavicella;
     pthread_mutex_unlock(&mtx);
+
     //pulisco lo schermo.
     clear();
-    int exit=0;
+    int via=0;
+
     //stampa di game over quando si perde.
-    if(vite==0 && nemiciVivi>0){
+    if(vite==0 && numNemici>0){
+        for(i=0; i<numNemici; i++){
+            if(statoNemico[i]!=3){
+                turnodimorireNemici = nemico[i].id;
+                //usleep(1000);
+            }
+
+        }
+
+        //pthread_mutex_unlock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
-           mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
+            //mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
         }
         attron(COLOR_PAIR(1));
-        while(exit!=32){
-        mvprintw(maxy/2-2, maxx/2-15,"Hai totalizzato %d punti", punti);
-        mvprintw(maxy/2, maxx/2-15,"Premi spazio per uscire");
-        timeout(1000);
-        exit=getch();
-        refresh();
-    }
-
+        //exit(1);
+        while(via!=32){
+            mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
+            mvprintw(maxy/2, maxx/2-11,"Premi spazio per uscire");
+            mvprintw(2, 2, "pisello   %d", via);
+            timeout(10000);
+            via=getch();
+            refresh();
+        }
     }
 
     //stampa di game over quando si vince.
@@ -1041,12 +1057,12 @@ void* controllo(){
             mvprintw(maxy/2-10+i, maxx/2-50, youwon[i]);
         }
         attron(COLOR_PAIR(1));
-        while(exit!=32){
-        mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
-        mvprintw(maxy/2, maxx/2-15,"Premi spazio per uscire");
-        timeout(1000);
-        exit=getch();
-        refresh();
+        while(via!=32){
+            mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
+            mvprintw(maxy/2, maxx/2-11,"Premi spazio per uscire");
+            timeout(1000);
+            via=getch();
+            refresh();
         }
     }
 }
@@ -1106,12 +1122,13 @@ void *bomba(void *arg){
     int x_bomba = tmp.x_bomba;
     int y_bomba = tmp.y_bomba;
     int id = tmp.id;
+    identity i = tmp.i;
     pthread_t threaddino = tmp.threaddino;
 
     Position pos_bomba;
     pos_bomba.x=x_bomba;
     pos_bomba.y=y_bomba;
-    pos_bomba.i=Bomba;
+    pos_bomba.i=i;
     pos_bomba.id=id;
     pos_bomba.Tthreadtokill=threaddino;
 
@@ -1131,7 +1148,7 @@ void *bomba(void *arg){
         pthread_mutex_unlock(&mtx);
     }
     turnodimorireBomba=-1;
-    int pthread_cancel(pthread_t threaddino);  
+    int pthread_cancel(pthread_t threaddino);
 }
 
 
