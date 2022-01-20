@@ -174,7 +174,7 @@ int main() {
     //in base al valore di ritorno del menù viene impostato il numero di nemici.
     switch(valoreDifficolta){
         case 0:
-            numNemici=1;
+            numNemici=2;
             break;
 
         case 1:
@@ -247,7 +247,6 @@ int main() {
     for(i=0; i<numNemici; i++) {
         pthread_join(Tnemico[i], NULL);
     }
-
     endwin();
     exit(0);
 }
@@ -261,25 +260,15 @@ int main() {
  * @param maxy Massimo valore delle Y sullo schermo
  */
 void* navicella(){
-    //pthread_mutex_lock(&mtx);
     Position pos_navicella;
     pos_navicella.x=2;
     pos_navicella.y=maxy/2;
-    //pos_navicella.y=6;
     pos_navicella.i=Navicella;
-    //pthread_mutex_unlock(&mtx);
-    //pid_t pid_missile1, pid_missile2;
-    int sig1, sig2, c;
-
+    int c;
     pthread_t Tmissile1;
     pthread_t Tmissile2;
-
     scriveNelBuffer(pos_navicella);
-    int culo1;
-    int culo2;
     while(1) {
-
-
         timeout(100);
         c = getch();
         switch (c) {
@@ -292,17 +281,13 @@ void* navicella(){
                 if (pos_navicella.y < maxy - 3) {
                     pos_navicella.y++;
                 }
-
                 break;
             case ' ':
                 if (isMissileVivo1 == 0 && isMissileVivo2 == 0) {
-                    //pthread_mutex_unlock(&mtx);
-
                     pthread_mutex_lock(&mtx);
                     isMissileVivo2 = 1;
                     isMissileVivo1 = 1;
                     pthread_mutex_unlock(&mtx);
-
                     valuesMissili msl1, msl2;
                     msl1.navx = msl2.navx = pos_navicella.x;
                     msl1.navy = msl2.navy = pos_navicella.y;
@@ -315,7 +300,6 @@ void* navicella(){
                 }
                 break;
         }
-
         pthread_mutex_lock(&mtx);
         if (isMissileVivo1 == 1) {
             pthread_mutex_unlock(&mtx);
@@ -339,10 +323,7 @@ void* navicella(){
         }
         pthread_mutex_unlock(&mtx);
     }
-    clear();
-
     int pthread_cancel(pthread_t Tnavicella);
-
 }
 
 /**
@@ -377,54 +358,36 @@ void* nemiciPrimoLivello(void *arg){
 
     while(idNemico!=turnodimorireNemici) {
         pthread_mutex_unlock(&mtx);
-
-        mvprintw(2+idNemico,2,"                 turnodimorirenemico %d,  %d         ",turnodimorireNemici,threadCorrente);
-
-
-
         dirx = -PASSO;
         pos_nemico.x += dirx;
 
-        if (r % 2 == 0)
-            diry = PASSO;
-        else
-            diry = -PASSO;
-        if (pos_nemico.y + diry < 2 || pos_nemico.y + diry >= maxy)
-            diry = -diry;
+        if (r % 2 == 0) { diry = PASSO;}
+        else { diry = -PASSO; }
+        if (pos_nemico.y + diry < 2 || pos_nemico.y + diry >= maxy) { diry = -diry; }
         pos_nemico.y += diry;
         r++;
         scriveNelBuffer(pos_nemico);
         usleep(1200000);
 
-
-
         if (!(cicli++ % 5)) {
-            /*pid_bomba=fork();
-            switch(pid_bomba){
-                case -1:
-                    perror("Errore nell'esecuzione della fork!");
-                    exit(1);
-                case 0:
-                    bomba(pipeout, pos_nemico.x-1, pos_nemico.y+1, idNemico);
-                default:
-                    break;
-            }*/
 
-            pthread_t Tbombacurrnt;
-            pos_nemico.Tthreadtokill = Tbombacurrnt;
-            valuesBomba vb;
-            vb.x_bomba = pos_nemico.x - 1;
-            vb.y_bomba = pos_nemico.y + 1;
-            vb.id = idNemico;
-            vb.threaddino = Tbombacurrnt;
-
-            pthread_create(&Tbombacurrnt, NULL, bomba, (void *) &vb);
+            valuesBomba vb[2];
+            vb[0].x_bomba = pos_nemico.x - 1;
+            vb[0].y_bomba = pos_nemico.y + 1;
+            vb[0].id = idNemico;
+            vb[0].i = Bomba;
+            vb[0].threaddino = Tbombacurrnt1;
+            pthread_create(&Tbombacurrnt1, NULL, bomba, (void *) &vb[0]);
+            vb[1].x_bomba = pos_nemico.x - 1;
+            vb[1].y_bomba = pos_nemico.y + 5;
+            vb[1].id = idNemico;
+            vb[1].i = BombaAvanzata;
+            vb[1].threaddino = Tbombacurrnt2;
+            pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
 
             pthread_join(Tbombacurrnt, NULL);
         }
     }
-    mvprintw(1,1,"SONO USCITO DAL WHILE!          ");
-    refresh();
     pthread_mutex_unlock(&mtx);
     pthread_mutex_lock(&mtx);
     turnodimorireNemici=-1;
@@ -439,7 +402,6 @@ void* nemiciPrimoLivello(void *arg){
  * @param maxy Massimo valore delle Y sullo schermo
  */
 void* controllo(){
-
     //dichiarazione delle variabili dove verranno salvate le informazioni lette dalla pipe.
     Position nemico[numNemici], bombe[numNemici], bombeAvanzate[numNemici], navicella, valore_letto, missili[2];
     int i, punti=0, cicli=1, vite=3, n, j;
@@ -468,15 +430,13 @@ void* controllo(){
         mvprintw(1, i, "-");
     }
     do{
-        mvprintw(2,2,"ism1 = %d     ",isMissileVivo1);
-        mvprintw(3,2,"ism2 = %d     ",isMissileVivo2);
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
         /*pthread_mutex_lock(&mtx);
         valore_letto = pos_navicella;
         pthread_mutex_unlock(&mtx);
         */
-        //mvprintw(2,1,"valore letto i: %d",valore_letto.i);   
+        //mvprintw(2,1,"valore letto i: %d",valore_letto.i);
         //controllo che tipo di valore ho letto.
         switch (valore_letto.i) {
             case Nemico:
@@ -558,6 +518,7 @@ void* controllo(){
                 if(nemico[valore_letto.id].x<2){
                     //imposto le vite della navicella a zero.
                     vite=0;
+                    pthread_mutex_unlock(&mtx);
                 }
                 break;
             case Navicella:
@@ -1070,6 +1031,7 @@ void* controllo(){
     }
 
     }
+
     //stampa di game over quando si vince.
     //pthread_mutex_lock(&mtx);
     else if(nemiciVivi==0 && valoreDifficolta!=3 && vite>0){
@@ -1087,11 +1049,6 @@ void* controllo(){
         refresh();
         }
     }
-    /*clear();
-    mvprintw(1,1,"siamo usciti da tutte le condizioni");
-    refresh();
-    usleep(222222222);*/
-    //pthread_mutex_unlock(&mtx);
 }
 
 
@@ -1101,13 +1058,6 @@ void *missile(void *arg){
     int navx = tmp.navx;
     int navy = tmp.navy;
     int diry = tmp.diry;
-    /*pthread_mutex_lock(&mtx);
-    if(diry==1){
-        isMissileVivo1=1;
-    } else if(diry==-1){
-        isMissileVivo2=1;
-    }
-    pthread_mutex_unlock(&mtx);*/
     pthread_t threadCorrente = tmp.Tmissile;
     Position pos_missile;
     pos_missile.x=5+navx;
@@ -1141,17 +1091,12 @@ void *missile(void *arg){
         pthread_mutex_unlock(&mtx);
     }
 
-    //int status=0;
     pthread_mutex_lock(&mtx);
-    //usleep(20000);
         isMissileVivo1=0;
         isMissileVivo2=0;
     pthread_mutex_unlock(&mtx);
-    //void pthread_exit(void *status);
-    int pthread_cancel(pthread_t threadCorrente);
 
-    //kill(getpid(),SIGKILL);
-    //exit(1);
+    int pthread_cancel(pthread_t threadCorrente);
 }
 
 
@@ -1235,7 +1180,7 @@ int menu(int maxx, int maxy){
         //stampa della linea superiore
         attron(COLOR_PAIR(1));
         mvprintw(0, 1, "SpaceDefenders");
-        mvprintw(0, (maxx/2)-33, "SpaceDefenders      Andrea Martis / Alessio Largiu      Unica 2021");
+        mvprintw(0, (maxx/2)-33, "                  Andrea Martis / Alessio Largiu      Unica 2021");
 
         for(i=0; i<maxx; i++){
             mvprintw(1, i, "-");
@@ -1279,12 +1224,10 @@ int menu(int maxx, int maxy){
         //stampa selezione della difficoltà
         if(isAnimationDone==1){
             mvprintw(25, (maxx/2)-16, "Seleziona la modalita' di gioco");
-
             mvprintw(27, (maxx/2)-4, "Facile");
             mvprintw(28, (maxx/2)-4, "Medio");
             mvprintw(29, (maxx/2)-4, "Difficile");
             mvprintw(30, (maxx/2)-4, "Esci");
-
 
             switch(scelta){
                 case KEY_UP:
@@ -1318,7 +1261,6 @@ int menu(int maxx, int maxy){
                 }
             }
             attron(COLOR_PAIR(1));
-
         }
 
         //stampa della seconda banda orizzontale
@@ -1383,9 +1325,7 @@ int menu(int maxx, int maxy){
 
         timeout(100);
         scelta=getch();
-
         usleep(10000);
-
         refresh();
         isAnimationDone=1;
     }
