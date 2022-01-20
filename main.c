@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <vlc/vlc.h>
 
 #define PASSO 1
 #define MAX 4316
@@ -27,7 +28,7 @@ typedef struct{
     pthread_t Tthreadtokill;
 }Position;
 
-
+void riproduciSuono(void *arg);
 int menu(int maxx, int maxy);
 void *navicella();
 void *nemiciPrimoLivello(void *arg);
@@ -248,7 +249,7 @@ int main() {
     for(i=0; i<numNemici; i++) {
         pthread_join(Tnemico[i], NULL);
     }
-    
+
     endwin();
     exit(0);
 }
@@ -1216,11 +1217,12 @@ Position leggeDalBuffer(){
  * @return Numero che identifica la selezione della difficoltà.
  */
 int menu(int maxx, int maxy){
+
     //nel caso in cui lo schermo sia troppo piccolo viene visualizzato questo messaggio
     if(maxx<140 || maxy<20){
         while(1){
             mvprintw(1,1,"Risoluzione troppo bassa");
-            mvprintw(2,1,"Prova a passare a schermo intero");
+            mvprintw(2,1,"Risoluzione minima: 140(x) caratteri per 20(y) caratteri");
             mvprintw(3,1,"Ridimensiona e riesegui :(");
             refresh();
         }
