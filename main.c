@@ -242,8 +242,16 @@ int main() {
     pthread_join(Tnavicella, NULL);
 
     for(i=0; i<numNemici; i++) {
-        pthread_join(Tnemico[i], NULL);
+        pthread_t tmp = Tnemico[i];
+        pthread_detach(tmp);
+        mvprintw(20+1,10,"------------------------------   %d",Tnemico[i]);
+        refresh();
     }
+    clear();
+    mvprintw(20+i+1,18,"porco  san saturnino");
+    refresh();
+    usleep(10000000);
+
     endwin();
     exit(0);
 }
@@ -382,11 +390,22 @@ void* nemiciPrimoLivello(void *arg){
             vb[1].i = BombaAvanzata;
             vb[1].threaddino = Tbombacurrnt2;
             pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
-
+            /*
             pthread_join(Tbombacurrnt1, NULL);
             pthread_join(Tbombacurrnt2, NULL);
+            */
+            pthread_detach(Tbombacurrnt1);
+            pthread_detach(Tbombacurrnt2);
         }
     }
+    mvprintw(15+idNemico,10,"muore il nemico %d",idNemico);
+    refresh();
+    turnodimorireBomba=Tbombacurrnt1;
+    usleep(1000);
+    pthread_detach(Tbombacurrnt1);
+    turnodimorireBomba=Tbombacurrnt2;
+    usleep(1000);
+    pthread_detach(Tbombacurrnt2);
     pthread_mutex_unlock(&mtx);
     pthread_mutex_lock(&mtx);
     turnodimorireNemici=-1;
@@ -1022,22 +1041,44 @@ void* controllo(){
     int via=0;
 
     //stampa di game over quando si perde.
-    if(vite==0 && numNemici>0){
-        for(i=0; i<numNemici; i++){
-            if(statoNemico[i]!=3){
+    if(vite<=0){
+            /*for (i = 0; i < numNemici; i++) {
+                    pthread_mutex_lock(&mtx);
+                    //pthread_cancel(nemico[i].Tthreadtokill);
+                    turnodimorireBomba=bombe[i].Tthreadtokill;
+                    //mvprintw(10,30,"ciao: %d",turnodimorire);
+                    pthread_mutex_unlock(&mtx);
+                    // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
+        }
+
+        for (i = 0; i < numNemici; i++) {
+            pthread_mutex_lock(&mtx);
+            //pthread_cancel(nemico[i].Tthreadtokill);
+            turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
+            //mvprintw(10,30,"ciao: %d",turnodimorire);
+            pthread_mutex_unlock(&mtx);
+            // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
+        }*/
+
+        for (i = 0; i < numNemici; i++) {
+            if (statoNemico[i] == 0 || statoNemico[i] == 1) {
+                pthread_mutex_lock(&mtx);
+                //pthread_cancel(nemico[i].Tthreadtokill);
                 turnodimorireNemici = nemico[i].id;
+                //mvprintw(10,30,"ciao: %d",turnodimorire);
+                pthread_mutex_unlock(&mtx);
+                // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
+
                 //usleep(1000);
             }
-
         }
 
         //pthread_mutex_unlock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
-            //mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
+            mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
         }
         attron(COLOR_PAIR(1));
-        //exit(1);
         while(via!=32){
             mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
             mvprintw(maxy/2, maxx/2-11,"Premi spazio per uscire");
@@ -1046,11 +1087,17 @@ void* controllo(){
             via=getch();
             refresh();
         }
+        mvprintw(11,11,"porca madonnayyyyy");
+        refresh();
+        usleep(30000);
+
     }
 
+    mvprintw(12,12,"porca sant'avendrace");
+    refresh();
     //stampa di game over quando si vince.
     //pthread_mutex_lock(&mtx);
-    else if(nemiciVivi==0 && valoreDifficolta!=3 && vite>0){
+    if(nemiciVivi==0 && valoreDifficolta!=3 && vite>0){
         //pthread_mutex_unlock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
@@ -1065,6 +1112,8 @@ void* controllo(){
             refresh();
         }
     }
+    mvprintw(13,13,"porco sant'efisio");
+    refresh();
 }
 
 
@@ -1184,14 +1233,14 @@ Position leggeDalBuffer(){
 int menu(int maxx, int maxy){
 
     //nel caso in cui lo schermo sia troppo piccolo viene visualizzato questo messaggio
-    if(maxx<140 || maxy<20){
+    /*if(maxx<140 || maxy<20){
         while(1){
             mvprintw(1,1,"Risoluzione troppo bassa");
             mvprintw(2,1,"Risoluzione minima: 140(x) caratteri per 20(y) caratteri");
             mvprintw(3,1,"Ridimensiona e riesegui :(");
             refresh();
         }
-    }
+    }*/
     int isAnimationDone=0, scelta, numScelta=0, i, j=0;
     while(1){
         //stampa della linea superiore
