@@ -1040,7 +1040,6 @@ void* controllo(){
             mvprintw(1, i, "-");
         }
         //aggiornamento degli elementi a schermo.
-        usleep(2000);
         refresh();
     }while(vite>0 && nemiciVivi>0); //ciclo termina quando la navicella non ha più vite oppure quando tutti i nemici sono stati distrutti.
 
@@ -1172,7 +1171,6 @@ void *missile(void *arg){
         isMissileVivo1=0;
         isMissileVivo2=0;
     pthread_mutex_unlock(&mtx);
-    canyoupressspace=1;
     int pthread_cancel(pthread_t threadCorrente);
 }
 
