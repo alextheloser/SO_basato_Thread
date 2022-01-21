@@ -16,6 +16,7 @@
 pthread_t turnodimorire=-1;
 int turnodimorireNemici=-1;
 pthread_t turnodimorireBomba=-1;
+int rindondanzaTurnodiMorireBomba=-1;
 pthread_t turnodimorireNavicella=-1;
 
 typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
@@ -173,7 +174,7 @@ int main() {
     //in base al valore di ritorno del menù viene impostato il numero di nemici.
     switch(valoreDifficolta){
         case 0:
-            numNemici=2;
+            numNemici=5;
             break;
 
         case 1:
@@ -447,6 +448,8 @@ void* controllo(){
     for(i=0; i<maxx; i++){
         mvprintw(1, i, "-");
     }
+
+    int blacklistedBomba=-1;
     do{
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
@@ -618,7 +621,7 @@ void* controllo(){
                             //kill(missili[n].pid, 1);
                             pthread_mutex_lock(&mtx);
                             turnodimorire=missili[n].Tthreadtokill;
-                            turnodimorireBomba=bombe[i].Tthreadtokill;
+                            rindondanzaTurnodiMorireBomba=bombe[i].id;
                             pthread_mutex_unlock(&mtx);
                             //termino il processo che gestiva la bomba.
                             
@@ -641,7 +644,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
-                                turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
+                                rindondanzaTurnodiMorireBomba=bombeAvanzate[i].id;
                                 pthread_mutex_unlock(&mtx);
 
                                 //termino il processo che gestiva la bomba.
@@ -925,18 +928,23 @@ void* controllo(){
                 mvaddch(bombe[valore_letto.id].y, bombe[valore_letto.id].x,SpriteBomba);
                 //collisione bomba-navicella
                 for(i=0; i<numNemici; i++){
-                    if((navicella.x==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y==bombe[i].y)
+                    if(bombe[i].id!=blacklistedBomba && ((navicella.x==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y==bombe[i].y)
                        || (navicella.x==bombe[i].x && navicella.y+1==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y+1==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y+1==bombe[i].y) || (navicella.x+3==bombe[i].x && navicella.y+1==bombe[i].y) || (navicella.x+4==bombe[i].x && navicella.y+1==bombe[i].y)
-                       || (navicella.x==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y+2==bombe[i].y)){
+                       || (navicella.x==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y+2==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y+2==bombe[i].y))){
                         //la navicella quando colpita da una bomba perde una vita.
-                        vite--;
-                        pthread_mutex_lock(&mtx);
 
+                        pthread_mutex_lock(&mtx);
+                        rindondanzaTurnodiMorireBomba=bombe[i].id;
+                        blacklistedBomba=bombe[i].id;
+                        usleep(1000);
+                        vite--;
+                        mvprintw(1,1,"STO FACENDO UNA COSA %d!!!!!!!",bombe[i].id);
+                        refresh();
+                        //usleep(999999);
                         //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
                         bombe[i].x=-4;
                         bombe[i].y=-4;
-                        //termino il processo che gestisce la bomba.
-                        turnodimorireBomba=bombe[i].Tthreadtokill;
+                        //termino il processo che gestisce la bomba
                         pthread_mutex_unlock(&mtx);
                     }
                 }
@@ -974,19 +982,22 @@ void* controllo(){
                     mvaddch(bombeAvanzate[valore_letto.id].y, bombeAvanzate[valore_letto.id].x,SpriteBomba);
                     //collisione bomba-navicella
                     for(i=0; i<numNemici; i++){
-                        if((navicella.x==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y)
+                        if(bombe[i].id!=blacklistedBomba && ((navicella.x==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y)
                            || (navicella.x==bombeAvanzate[i].x && navicella.y+1==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y+1==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y+1==bombeAvanzate[i].y) || (navicella.x+3==bombeAvanzate[i].x && navicella.y+1==bombeAvanzate[i].y) || (navicella.x+4==bombeAvanzate[i].x && navicella.y+1==bombeAvanzate[i].y)
-                           || (navicella.x==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y)){
+                           || (navicella.x==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y+2==bombeAvanzate[i].y))){
                             //la navicella qkill(uando colpita da una bomba perde una vita.
-                            vite--;
                             pthread_mutex_lock(&mtx);
-
+                            rindondanzaTurnodiMorireBomba=bombeAvanzate[i].id;
+                            blacklistedBomba=bombe[i].id;
+                            usleep(1000);
+                            vite--;
+                            mvprintw(2,1,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %d!!!!!!!",bombe[i].id);
+                            refresh();
+                            //usleep(999999);
                             //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
                             bombeAvanzate[i].x=-4;
                             bombeAvanzate[i].y=-4;
                             //termino il processo che gestisce la bomba.
-
-                            turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
                             pthread_mutex_unlock(&mtx);
                         }
                     }
@@ -1183,20 +1194,22 @@ void *bomba(void *arg){
 
 
     scriveNelBuffer(pos_bomba);
-
-    while(!(pos_bomba.x<0)){
+    pthread_mutex_lock(&mtx);
+    while(!(pos_bomba.x<0) && rindondanzaTurnodiMorireBomba!=id){
+        //mvprintw(10+id,20,"%d:  %d    ",pos_bomba.id, pos_bomba.x);
+        //refresh();
+        pthread_mutex_unlock(&mtx);
         pos_bomba.x-=1;
         scriveNelBuffer(pos_bomba);
         usleep(30000);
-        pthread_mutex_lock(&mtx);
-        if(turnodimorireBomba==threaddino){
-            turnodimorireBomba=-1;
-            pthread_mutex_unlock(&mtx);
-            break;
-        }
-        pthread_mutex_unlock(&mtx);
     }
-    turnodimorireBomba=-1;
+    pthread_mutex_unlock(&mtx);
+    //mvprintw(3,1,"SOBO WU          ");
+    refresh();
+    usleep(1000);
+    /*pos_bomba.x=-100;
+    pos_bomba.y=-100;*/
+    rindondanzaTurnodiMorireBomba=-1;
     int pthread_cancel(pthread_t threaddino);
 }
 
