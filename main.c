@@ -1149,7 +1149,7 @@ void *missile(void *arg){
     }
     int i=0;
     scriveNelBuffer(pos_missile);
-    while(1) {
+    while(canyoupressspace==0) {
         if (pos_missile.y + diry > maxy || pos_missile.y + diry < 2) { diry = -diry; }
         if (i % 6 == 0) {
             pos_missile.y += diry;
@@ -1167,7 +1167,7 @@ void *missile(void *arg){
         }
         pthread_mutex_unlock(&mtx);
     }
-    usleep(20000);
+    canyoupressspace=1;
     pthread_mutex_lock(&mtx);
         isMissileVivo1=0;
         isMissileVivo2=0;
