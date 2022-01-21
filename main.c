@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <vlc/vlc.h>
+
 
 #define PASSO 1
 #define MAX 4316
