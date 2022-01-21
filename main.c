@@ -100,13 +100,13 @@ char gameover[7][100]={"  .oooooo.                                              
                        "`88.    .88'  d8(  888   888   888   888  888    .o    `88b    d88'    `888'    888    .o  888     ",
                        " `Y8bood8P'   `Y888\"\"8o o888o o888o o888o `Y8bod8P'     `Y8bood8P'      `8'     `Y8bod8P' d888b    "};
 
-char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo     oooo                       .o. ",
-                     " `888.   .8'                            `888.    `888.     .8'                        888 ",
+char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo     oooo                        .o. ",
+                     " `888.   .8'                            `888.    `888.     .8'                         888 ",
                      "  `888. .8'    .ooooo.  oooo  oooo       `888.   .8888.   .8'    .ooooo.  ooo. .oo.   888 ",
-                     "   `888.8'    d88' `88b `888  `888        `888  .8'`888. .8'    d88' `88b `888P\"Y88b  Y8P ",
-                     "    `888'     888   888  888   888         `888.8'  `888.8'     888   888  888   888  `8' ",
-                     "     888      888   888  888   888          `888'    `888'      888   888  888   888  .o. ",
-                     "    o888o     `Y8bod8P'  `V88V\"V8P'          `8'      `8'       `Y8bod8P' o888o o888o Y8P"};
+                     "   `888.8'    d88' `88b `888  `888        `888  .8'`888. .8'    d88' `88b `888P\"Y88b   Y8P ",
+                     "    `888'     888   888  888   888         `888.8'  `888.8'     888   888  888   888   `8' ",
+                     "     888      888   888  888   888          `888'    `888'      888   888  888   888   .o. ",
+                     "    o888o     `Y8bod8P'  `V88V\"V8P'          `8'      `8'       `Y8bod8P' o888o o888o  Y8P"};
 
 
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -377,7 +377,6 @@ void* nemiciPrimoLivello(void *arg){
         usleep(1200000);
 
         if (!(cicli++ % 5)) {
-
             valuesBomba vb[2];
             vb[0].x_bomba = pos_nemico.x - 1;
             vb[0].y_bomba = pos_nemico.y + 1;
@@ -1040,6 +1039,7 @@ void* controllo(){
             mvprintw(1, i, "-");
         }
         //aggiornamento degli elementi a schermo.
+        usleep(2000);
         refresh();
     }while(vite>0 && nemiciVivi>0); //ciclo termina quando la navicella non ha più vite oppure quando tutti i nemici sono stati distrutti.
 
