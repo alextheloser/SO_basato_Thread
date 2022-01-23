@@ -8,12 +8,38 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
+#include "controllo.h"
 
+typedef struct {
+    int navx;
+    int navy;
+    int diry;
+    pthread_t Tmissile;
+}valuesMissili;
 
+typedef struct {
+    int x;
+    int y;
+    int idNemico;
+    pthread_t Tnemico;
+}valuesNemici;
+
+typedef struct {
+    int x_bomba;
+    int y_bomba;
+    int id;
+    pthread_t threaddino;
+    identity i;
+}valuesBomba;
+
+int menu(int maxx, int maxy);
+void *navicella();
+void *nemici(void *arg);
+void *controllo();
+
+/*
 #define PASSO 1
 #define MAX 4316
-
-int canyoupressspace=1;
 
 pthread_t turnodimorire=-1;
 int turnodimorireNemici=-1;
@@ -32,7 +58,6 @@ typedef struct{
     pthread_t Tthreadtokill;
 }Position;
 
-void riproduciSuono(void *arg);
 int menu(int maxx, int maxy);
 void *navicella();
 void *nemiciPrimoLivello(void *arg);
@@ -145,7 +170,7 @@ pthread_t Tnavicella;
 
 int isMissileVivo1=0;
 int isMissileVivo2=0;
-
+*/
 int main() {
     int filedes[2], i, j=0, x_nemici, y_nemici, numColonne=1;
 
@@ -219,7 +244,7 @@ int main() {
         nemico[i].idNemico=i;
         nemico[i].Tnemico=Tnemico[i];
 
-        pthread_create(&Tnemico[i],NULL,nemiciPrimoLivello,(void *)&nemico[i]);
+        pthread_create(&Tnemico[i],NULL,nemici,(void *)&nemico[i]);
 
         j++;
         //aggiornamento delle coordinate iniziali del prossimo nemico da generare.
@@ -253,15 +278,10 @@ int main() {
     endwin();
     exit(0);
 }
+/*
 
 
 
-/**
- * Funzione che si occupa di generare le coordinate della navicella
- * @param pipeout File descriptor in scrittura della pipe
- * @param maxx Massimo valore delle X sullo schermo
- * @param maxy Massimo valore delle Y sullo schermo
- */
 void* navicella(){
     Position pos_navicella;
     pos_navicella.x=2;
@@ -287,7 +307,6 @@ void* navicella(){
                 break;
             case ' ':
                 if (isMissileVivo1 == 0 && isMissileVivo2 == 0){
-                    canyoupressspace=0;
                     pthread_mutex_lock(&mtx);
                     isMissileVivo2 = 1;
                     isMissileVivo1 = 1;
@@ -326,15 +345,7 @@ void* navicella(){
     pthread_exit((void *)1);
 }
 
-/**
- * Funzione che si occupa di generare le coordinate di una navicella nemica
- * @param pipeout File descriptor in scrittura della pipe
- * @param x Coordinata X iniziale del nemico
- * @param y Coordinata Y iniziale del nemico
- * @param idNemico Numero identificativo della navicella nemica
- * @param maxx Massimo valore delle X sullo schermo
- * @param maxy Massimo valore delle Y sullo schermo
- */
+
 
 void* nemiciPrimoLivello(void *arg){
     valuesNemici tmp = *(valuesNemici *)arg;
@@ -384,10 +395,7 @@ void* nemiciPrimoLivello(void *arg){
             vb[1].i = BombaAvanzata;
             vb[1].threaddino = Tbombacurrnt2;
             pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
-            /*
-            pthread_join(Tbombacurrnt1, NULL);
-            pthread_join(Tbombacurrnt2, NULL);
-            */
+
             pthread_detach(Tbombacurrnt1);
             pthread_detach(Tbombacurrnt2);
         }
@@ -407,12 +415,7 @@ void* nemiciPrimoLivello(void *arg){
     pthread_exit((void *)1);
 }
 
-/**
- * Funzione che si occupa della stampa dei vari elementi a schermo e delle collisioni
- * @param pipein File descriptor in lettura della pipe
- * @param maxx Massimo valore delle X sullo schermo
- * @param maxy Massimo valore delle Y sullo schermo
- */
+
 void* controllo(){
     //dichiarazione delle variabili dove verranno salvate le informazioni lette dalla pipe.
     Position nemico[numNemici], bombe[numNemici], bombeAvanzate[numNemici], navicella, valore_letto, missili[2];
@@ -447,10 +450,7 @@ void* controllo(){
     do{
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
-        /*pthread_mutex_lock(&mtx);
-        valore_letto = pos_navicella;
-        pthread_mutex_unlock(&mtx);
-        */
+
         //mvprintw(2,1,"valore letto i: %d",valore_letto.i);
         //controllo che tipo di valore ho letto.
         pthread_mutex_lock(&mtx);
@@ -1049,22 +1049,7 @@ void* controllo(){
 
     //stampa di game over quando si perde.
     if(vite<=0){
-        /*for (i = 0; i < numNemici; i++) {
-                pthread_mutex_lock(&mtx);
-                //pthread_cancel(nemico[i].Tthreadtokill);
-                turnodimorireBomba=bombe[i].Tthreadtokill;
-                //mvprintw(10,30,"ciao: %d",turnodimorire);
-                pthread_mutex_unlock(&mtx);
-                // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
-    }
-    for (i = 0; i < numNemici; i++) {
-        pthread_mutex_lock(&mtx);
-        //pthread_cancel(nemico[i].Tthreadtokill);
-        turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
-        //mvprintw(10,30,"ciao: %d",turnodimorire);
-        pthread_mutex_unlock(&mtx);
-        // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
-    }*/
+
 
         for (i = 0; i < numNemici; i++) {
             if (statoNemico[i] == 0 || statoNemico[i] == 1) {
@@ -1233,17 +1218,13 @@ void *bomba(void *arg){
     //mvprintw(3,1,"SOBO WU          ");
     refresh();
     usleep(1000);
-    /*pos_bomba.x=-100;
-    pos_bomba.y=-100;*/
+
     pthread_exit((void *)1);
 }
 
 
 
-/**
- * Funzione che si occupa di scrivere un oggetto nel buffer (analoga alla write).
- * @param oggetto Elemento da scrivere nel buffer.
- */
+
 void scriveNelBuffer(Position oggetto){
     sem_wait(&libere);
     pthread_mutex_lock(&mtxBuffer);
@@ -1253,10 +1234,7 @@ void scriveNelBuffer(Position oggetto){
     sem_post(&piene);
 }
 
-/**
- * Funzione che si occupa di leggere un oggetto nel buffer (analoga alla read).
- * @return Elemento letto dal buffer.
- */
+
 Position leggeDalBuffer(){
     Position tmp;
     sem_wait(&piene);
@@ -1268,23 +1246,18 @@ Position leggeDalBuffer(){
     return tmp;
 }
 
-/**
- * Funzione che si occupa del menù iniziale del gioco.
- * @param maxx Massimo valore delle X sullo schermo.
- * @param maxy Massimo valore delle Y sullo schermo.
- * @return Numero che identifica la selezione della difficoltà.
- */
+
 int menu(int maxx, int maxy){
 
     //nel caso in cui lo schermo sia troppo piccolo viene visualizzato questo messaggio
-    /*if(maxx<140 || maxy<20){
+    if(maxx<140 || maxy<20){
         while(1){
             mvprintw(1,1,"Risoluzione troppo bassa");
             mvprintw(2,1,"Risoluzione minima: 140(x) caratteri per 20(y) caratteri");
             mvprintw(3,1,"Ridimensiona e riesegui :(");
             refresh();
         }
-    }*/
+    }
     int isAnimationDone=0, scelta, numScelta=0, i, j=0;
     while(1){
         //stampa della linea superiore
@@ -1440,3 +1413,4 @@ int menu(int maxx, int maxy){
         isAnimationDone=1;
     }
 }
+*/
