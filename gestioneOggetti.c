@@ -10,7 +10,6 @@ void* navicella(){
     pos_navicella.y=maxy/2;
     pos_navicella.i=Navicella;
     int c;
-    pthread_t Tnavicella=pthread_self();
     pthread_t Tmissile1;
     pthread_t Tmissile2;
     scriveNelBuffer(pos_navicella);
@@ -58,8 +57,7 @@ void* navicella(){
         scriveNelBuffer(pos_navicella);
 
         pthread_mutex_lock(&mtx);
-        if(turnodimorireNavicella==Tnavicella){
-            turnodimorireNavicella=Tnavicella;
+        if(turnodimorireNavicella==1){
             pthread_mutex_unlock(&mtx);
             break;
         }
@@ -155,8 +153,6 @@ void* nemici(void *arg){
     pos_nemico.i=Nemico;
     pos_nemico.id=idNemico;
     pos_nemico.Tthreadtokill = pthread_self();
-    //pos_nemico.pid=getpid();
-    //pid_t pid_bomba;
     int r=1, dirx, diry, cicli=1;
     pthread_t Tbombacurrnt1, Tbombacurrnt2;
 
@@ -190,16 +186,10 @@ void* nemici(void *arg){
             vb[1].i = BombaAvanzata;
             vb[1].threaddino = Tbombacurrnt2;
             pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
-            /*
-            pthread_join(Tbombacurrnt1, NULL);
-            pthread_join(Tbombacurrnt2, NULL);
-            */
             pthread_detach(Tbombacurrnt1);
             pthread_detach(Tbombacurrnt2);
         }
     }
-    mvprintw(15+idNemico,10,"muore il nemico %d",idNemico);
-    refresh();
     turnodimorireBomba=Tbombacurrnt1;
     usleep(1000);
     pthread_detach(Tbombacurrnt1);
@@ -234,8 +224,6 @@ void *bomba(void *arg){
     pthread_mutex_lock(&mtx);
     if(pos_bomba.i==Bomba){
         while(!(pos_bomba.x<0) && rindondanzaTurnodiMorireBomba!=id){
-            //mvprintw(10+id,20,"%d:  %d    ",pos_bomba.id, pos_bomba.x);
-            //refresh();
             pthread_mutex_unlock(&mtx);
             pos_bomba.x-=1;
             scriveNelBuffer(pos_bomba);
@@ -245,8 +233,6 @@ void *bomba(void *arg){
     }
     if(pos_bomba.i==BombaAvanzata){
         while(!(pos_bomba.x<0) && rindondanzaTurnodiMorireBombaAvanzata!=id){
-            //mvprintw(10+id,20,"%d:  %d    ",pos_bomba.id, pos_bomba.x);
-            //refresh();
             pthread_mutex_unlock(&mtx);
             pos_bomba.x-=1;
             scriveNelBuffer(pos_bomba);
@@ -255,11 +241,8 @@ void *bomba(void *arg){
         rindondanzaTurnodiMorireBombaAvanzata=-1;
     }
     pthread_mutex_unlock(&mtx);
-    //mvprintw(3,1,"SOBO WU          ");
     refresh();
     usleep(1000);
-    /*pos_bomba.x=-100;
-    pos_bomba.y=-100;*/
     pthread_exit((void *)1);
 }
 
@@ -303,11 +286,6 @@ void* controllo(){
     do{
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
-        /*pthread_mutex_lock(&mtx);
-        valore_letto = pos_navicella;
-        pthread_mutex_unlock(&mtx);
-        */
-        //mvprintw(2,1,"valore letto i: %d",valore_letto.i);
         //controllo che tipo di valore ho letto.
         pthread_mutex_lock(&mtx);
         switch (valore_letto.i) {
@@ -469,7 +447,6 @@ void* controllo(){
                             //elimino dallo schermo il missile e la bomba.
 
                             //termino il processo che gestiva il missile.
-                            //kill(missili[n].pid, 1);
                             pthread_mutex_lock(&mtx);
                             turnodimorire=missili[n].Tthreadtokill;
                             rindondanzaTurnodiMorireBomba=bombe[i].id;
@@ -477,8 +454,6 @@ void* controllo(){
                             //termino il processo che gestiva la bomba.
 
                             mvaddch(missili[n].y, missili[n].x, ' ');
-                            //kill(bombe[i].pid, 1);
-
 
                             //imposto le coordnate del missile e della bomba fuori dallo schermo.
                             missili[n].x = -1;
@@ -501,7 +476,6 @@ void* controllo(){
                                 //termino il processo che gestiva la bomba.
 
                                 mvaddch(missili[n].y, missili[n].x, ' ');
-                                //kill(bombeAvanzate[i].pid, 1);
                                 //imposto le coordnate del missile e della bomba fuori dallo schermo.
 
 
@@ -559,7 +533,7 @@ void* controllo(){
                                 //aggiorno lo schermo.
                                 refresh();
                                 //imposto un delay per far vedere il nemico morente.
-                                usleep(30000);
+                                usleep(3000);
                                 //imposto il colore di base.
                                 attron(COLOR_PAIR(1));
                                 //modifico lo stato del nemico colpito da primo a secondo livello.
@@ -789,9 +763,6 @@ void* controllo(){
                         rindondanzaTurnodiMorireBomba=bombe[i].id;
                         usleep(1000);
                         vite--;
-                        mvprintw(1,1,"STO FACENDO UNA COSA %d!!!!!!!",bombe[i].id);
-                        refresh();
-                        //usleep(999999);
                         //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
                         bombe[i].x=-4;
                         bombe[i].y=-4;
@@ -842,9 +813,6 @@ void* controllo(){
                             rindondanzaTurnodiMorireBombaAvanzata=bombeAvanzate[i].id;
                             usleep(1000);
                             vite--;
-                            mvprintw(2,1,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %d!!!!!!!",bombe[i].id);
-                            refresh();
-                            //usleep(999999);
                             //aggiorno le coordinate della bomba che ha toccato la navicella fuori dallo schermo.
                             bombeAvanzate[i].x=-4;
                             bombeAvanzate[i].y=-4;
@@ -896,7 +864,7 @@ void* controllo(){
     }while(vite>0 && nemiciVivi>0); //ciclo termina quando la navicella non ha più vite oppure quando tutti i nemici sono stati distrutti.
 
     pthread_mutex_lock(&mtx);
-    pthread_exit((void *)1);
+    turnodimorireNavicella=1;
     pthread_mutex_unlock(&mtx);
 
     //pulisco lo schermo.
@@ -905,37 +873,17 @@ void* controllo(){
 
     //stampa di game over quando si perde.
     if(vite<=0){
-        /*for (i = 0; i < numNemici; i++) {
-                pthread_mutex_lock(&mtx);
-                //pthread_cancel(nemico[i].Tthreadtokill);
-                turnodimorireBomba=bombe[i].Tthreadtokill;
-                //mvprintw(10,30,"ciao: %d",turnodimorire);
-                pthread_mutex_unlock(&mtx);
-                // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
-    }
-    for (i = 0; i < numNemici; i++) {
-        pthread_mutex_lock(&mtx);
-        //pthread_cancel(nemico[i].Tthreadtokill);
-        turnodimorireBomba=bombeAvanzate[i].Tthreadtokill;
-        //mvprintw(10,30,"ciao: %d",turnodimorire);
-        pthread_mutex_unlock(&mtx);
-        // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
-    }*/
-
         for (i = 0; i < numNemici; i++) {
             if (statoNemico[i] == 0 || statoNemico[i] == 1) {
                 pthread_mutex_lock(&mtx);
-                //pthread_cancel(nemico[i].Tthreadtokill);
-                turnodimorireNemici = nemico[i].id;
-                //mvprintw(10,30,"ciao: %d",turnodimorire);
-                pthread_mutex_unlock(&mtx);
-                // mvprintw(10,10,"uccido il nemico %d", nemico[i].id);
 
-                //usleep(1000);
+                turnodimorireNemici = nemico[i].id;
+
+                pthread_mutex_unlock(&mtx);
+
             }
         }
 
-        //pthread_mutex_unlock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
             mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
@@ -957,9 +905,9 @@ void* controllo(){
     mvprintw(12,12,"porca sant'avendrace");
     refresh();
     //stampa di game over quando si vince.
-    //pthread_mutex_lock(&mtx);
+
     if(nemiciVivi==0 && valoreDifficolta!=3 && vite>0){
-        //pthread_mutex_unlock(&mtx);
+
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
             mvprintw(maxy/2-10+i, maxx/2-50, youwon[i]);

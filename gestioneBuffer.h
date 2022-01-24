@@ -21,12 +21,6 @@ typedef struct{
     pthread_t Tthreadtokill;
 }Position;
 
-/*
-void *navicella();
-void *missile(void *arg);
-void* nemici(void *arg);
-void *bomba(void *arg);
-void *controllo();*/
 void scriveNelBuffer(Position oggetto);
 Position leggeDalBuffer();
 

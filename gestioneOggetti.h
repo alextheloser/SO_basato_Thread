@@ -116,12 +116,5 @@ char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo    
                      "    o888o     `Y8bod8P'  `V88V\"V8P'          `8'      `8'       `Y8bod8P' o888o o888o  Y8P"};
 
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-int isMissileVivo1=0;
-int isMissileVivo2=0;
-int maxx, maxy, valoreDifficolta=1, numNemici;
-pthread_t turnodimorire=-1;
-int turnodimorireNemici=-1;
-pthread_t turnodimorireBomba=-1;
-int rindondanzaTurnodiMorireBomba=-1;
-int rindondanzaTurnodiMorireBombaAvanzata=-1;
-pthread_t turnodimorireNavicella=-1;
+int isMissileVivo1=0, isMissileVivo2=0, maxx, maxy, valoreDifficolta=1, numNemici, turnodimorireNemici=-1, turnodimorireNavicella=-1, rindondanzaTurnodiMorireBomba=-1, rindondanzaTurnodiMorireBombaAvanzata=-1;
+pthread_t turnodimorire=-1, turnodimorireBomba=-1;
