@@ -10,7 +10,6 @@
 #include <time.h>
 
 #define PASSO 1
-#define MAX 4316
 
 typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
 
@@ -22,10 +21,35 @@ typedef struct{
     pthread_t Tthreadtokill;
 }Position;
 
+typedef struct {
+    int x;
+    int y;
+    int idNemico;
+    pthread_t Tnemico;
+}valuesNemici;
+
+typedef struct {
+    int x_bomba;
+    int y_bomba;
+    int id;
+    pthread_t threaddino;
+    identity i;
+}valuesBomba;
+
+typedef struct {
+    int navx;
+    int navy;
+    int diry;
+    pthread_t Tmissile;
+}valuesMissili;
+
+void *navicella();
+void *missile(void *arg);
+void* nemici(void *arg);
+void *bomba(void *arg);
 void *controllo();
 void scriveNelBuffer(Position oggetto);
 Position leggeDalBuffer();
-int menu(int maxx, int maxy);
 
 char SpriteNavicella[6][6]={
         "<-\\",
@@ -92,15 +116,9 @@ char youwon[7][100]={"oooooo   oooo                          oooooo   oooooo    
                      "    o888o     `Y8bod8P'  `V88V\"V8P'          `8'      `8'       `Y8bod8P' o888o o888o  Y8P"};
 
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mtxBuffer = PTHREAD_MUTEX_INITIALIZER;
-
-int maxx, maxy, posLettura =0, posScrittura =0, valoreDifficolta=1, numNemici;
-sem_t piene, libere;
-Position buffer[MAX];
-pthread_t Tnavicella;
 int isMissileVivo1=0;
 int isMissileVivo2=0;
-
+int maxx, maxy, valoreDifficolta=1, numNemici;
 pthread_t turnodimorire=-1;
 int turnodimorireNemici=-1;
 pthread_t turnodimorireBomba=-1;

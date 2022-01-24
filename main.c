@@ -8,14 +8,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
-#include "controllo.h"
 
-typedef struct {
-    int navx;
-    int navy;
-    int diry;
-    pthread_t Tmissile;
-}valuesMissili;
+#define MAX 4316
 
 typedef struct {
     int x;
@@ -24,18 +18,58 @@ typedef struct {
     pthread_t Tnemico;
 }valuesNemici;
 
-typedef struct {
-    int x_bomba;
-    int y_bomba;
-    int id;
-    pthread_t threaddino;
+void *navicella();
+void* nemici(void *arg);
+void *controllo();
+int menu(int maxx, int maxy);
+
+
+int maxx, maxy, numNemici;
+
+sem_t piene, libere;
+
+/*
+#define PASSO 1
+#define MAX 4316
+
+typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
+
+typedef struct{
+    int x;
+    int y;
     identity i;
-}valuesBomba;
+    int id; //solo per i nemici
+    pthread_t Tthreadtokill;
+}Position;
+
+typedef struct {
+    int x;
+    int y;
+    int idNemico;
+    pthread_t Tnemico;
+}valuesNemici;
 
 int menu(int maxx, int maxy);
 void *navicella();
 void *nemici(void *arg);
 void *controllo();
+
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mtxBuffer = PTHREAD_MUTEX_INITIALIZER;
+
+int maxx, maxy, posLettura =0, posScrittura =0, valoreDifficolta=1, numNemici;
+sem_t piene, libere;
+Position buffer[MAX];
+pthread_t Tnavicella;
+int isMissileVivo1=0;
+int isMissileVivo2=0;
+
+pthread_t turnodimorire=-1;
+int turnodimorireNemici=-1;
+pthread_t turnodimorireBomba=-1;
+int rindondanzaTurnodiMorireBomba=-1;
+int rindondanzaTurnodiMorireBombaAvanzata=-1;
+pthread_t turnodimorireNavicella=-1;*/
 
 /*
 #define PASSO 1
@@ -228,7 +262,7 @@ int main() {
     sem_init(&libere,0,MAX);
 
     //Creare questa roba in un loop con tante variabili per ogni nemico
-
+    pthread_t Tnavicella;
     pthread_create(&Tnavicella,NULL,navicella,NULL);
     //
 
@@ -278,6 +312,8 @@ int main() {
     endwin();
     exit(0);
 }
+
+
 /*
 
 
@@ -1246,171 +1282,4 @@ Position leggeDalBuffer(){
     return tmp;
 }
 
-
-int menu(int maxx, int maxy){
-
-    //nel caso in cui lo schermo sia troppo piccolo viene visualizzato questo messaggio
-    if(maxx<140 || maxy<20){
-        while(1){
-            mvprintw(1,1,"Risoluzione troppo bassa");
-            mvprintw(2,1,"Risoluzione minima: 140(x) caratteri per 20(y) caratteri");
-            mvprintw(3,1,"Ridimensiona e riesegui :(");
-            refresh();
-        }
-    }
-    int isAnimationDone=0, scelta, numScelta=0, i, j=0;
-    while(1){
-        //stampa della linea superiore
-        attron(COLOR_PAIR(1));
-        mvprintw(0, 1, "SpaceDefenders");
-        mvprintw(0, (maxx/2)-33, "                  Andrea Martis / Alessio Largiu      Unica 2021");
-
-        for(i=0; i<maxx; i++){
-            mvprintw(1, i, "-");
-        }
-
-        //stampa del logo
-        if(isAnimationDone==0){
-
-            usleep(10000);
-            for(i=8; i<15; i++){
-                attron(COLOR_PAIR(2));
-                for (j = 0; j < 8; j++) {
-                    mvprintw(i+j, (maxx/2)-63, logo[j]);
-                }
-                for (j = 0; j < 8; j++) {
-                    mvprintw(i+j-6,  (maxx/2)-63, "                                                                                                                               ");
-                }
-                usleep(80000);
-                refresh();
-            }
-            attron(COLOR_PAIR(1));
-        }
-
-        attron(COLOR_PAIR(3));
-        for (j = 0; j < 8; j++) {
-            mvprintw(i+j-1,  (maxx/2)-63, logo[j]);
-        }
-
-        //stampa della prima banda orizzontale
-        attron(COLOR_PAIR(2));
-        for(i=0; i<maxx; i++){
-            mvprintw(22, i, "+");
-            mvprintw(23, i, "+");
-            if(isAnimationDone==0){
-                usleep(7000);
-                refresh();
-            }
-        }
-        attron(COLOR_PAIR(1));
-
-        //stampa selezione della difficoltà
-        if(isAnimationDone==1){
-            mvprintw(25, (maxx/2)-16, "Seleziona la modalita' di gioco");
-            mvprintw(27, (maxx/2)-4, "Facile");
-            mvprintw(28, (maxx/2)-4, "Medio");
-            mvprintw(29, (maxx/2)-4, "Difficile");
-            mvprintw(30, (maxx/2)-4, "Esci");
-
-            switch(scelta){
-                case KEY_UP:
-                    numScelta--;
-                    if(numScelta<0){
-                        numScelta=3;
-                    }
-                    break;
-
-                case KEY_DOWN:
-                    numScelta++;
-
-                    if(numScelta>3){
-                        numScelta=0;
-                    }
-                    break;
-
-                case 10:
-                    return numScelta;
-                    break;
-            }
-
-            //stampa del cursore
-            attron(COLOR_PAIR(3));
-            //int miStoComplicandoLaVita=0;
-            for(j=0; j<=3; j++){
-                if(j==numScelta){
-                    mvprintw(27+j, (maxx/2)-6, ">");
-                } else {
-                    mvprintw(27+j, (maxx/2)-6, " ");
-                }
-            }
-            attron(COLOR_PAIR(1));
-        }
-
-        //stampa della seconda banda orizzontale
-        attron(COLOR_PAIR(3));
-        for(i=maxx; i>=0; i--){
-            mvprintw(32, i, "+");
-            mvprintw(33, i, "+");
-            if(isAnimationDone==0){
-                usleep(7000);
-                refresh();
-            }
-        }
-        attron(COLOR_PAIR(1));
-
-        //animazione della navicella e del nemico
-        if(isAnimationDone==0){
-            for (i = 0; i < 3; i++) {
-                mvprintw(4 + i, 10, SpriteNavicella[i]);
-            }
-
-            for (i = 0; i < 3; i++) {
-                mvprintw(4 + i, 132, SpriteNemicoBase[i]);
-            }
-
-            for(i=0;i<=117;i++){
-                mvprintw(5, 16+i, ">");
-                usleep(20000);
-                mvprintw(5, 16+i-1, " ");
-                refresh();
-
-            }
-
-            mvprintw(5,133," ");
-
-            for (i = 0; i < 3; i++) {
-                mvprintw(4 + i, 132, SpriteNemicoMorente[i]);
-            }
-            refresh();
-            usleep(200000);
-            for (i = 0; i < 3; i++) {
-                mvprintw(4 + i, 132, "    ");
-            }
-            refresh();
-            for(j=0; j<(maxx/2);j++){
-                for (i = 0; i < 3; i++) {
-                    mvprintw(4 + i, j+10, SpriteNavicella[i]);
-                }
-                for (i = 0; i < 3; i++) {
-                    mvprintw(4 + i, 2-j+10, "    ");
-                }
-                refresh();
-                usleep(10000);
-            }
-        }
-
-        if(isAnimationDone==1){
-            for (i = 0; i < 3; i++) {
-                mvprintw(4 + i, maxx/2+10, SpriteNavicella[i]);
-            }
-
-        }
-
-        timeout(100);
-        scelta=getch();
-        usleep(10000);
-        refresh();
-        isAnimationDone=1;
-    }
-}
 */

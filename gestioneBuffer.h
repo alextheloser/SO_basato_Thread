@@ -9,6 +9,8 @@
 #include <sys/wait.h>
 #include <time.h>
 
+#define MAX 4316
+
 typedef enum {Navicella, Nemico, Missile, Bomba, BombaAvanzata}identity;
 
 typedef struct{
@@ -19,20 +21,16 @@ typedef struct{
     pthread_t Tthreadtokill;
 }Position;
 
-typedef struct {
-    int x;
-    int y;
-    int idNemico;
-    pthread_t Tnemico;
-}valuesNemici;
-
-typedef struct {
-    int x_bomba;
-    int y_bomba;
-    int id;
-    pthread_t threaddino;
-    identity i;
-}valuesBomba;
-
+/*
+void *navicella();
+void *missile(void *arg);
 void* nemici(void *arg);
 void *bomba(void *arg);
+void *controllo();*/
+void scriveNelBuffer(Position oggetto);
+Position leggeDalBuffer();
+
+pthread_mutex_t mtxBuffer = PTHREAD_MUTEX_INITIALIZER;
+sem_t piene, libere;
+Position buffer[MAX];
+int posLettura =0, posScrittura =0;
