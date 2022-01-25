@@ -1,16 +1,15 @@
 #include <stdio.h>
 #include <ncurses.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <time.h>
 
+//dimensione del buffer.
 #define MAX 4316
 
+//thread-argument per le funzione nemici.
 typedef struct {
     int x;
     int y;
@@ -18,20 +17,25 @@ typedef struct {
     pthread_t Tnemico;
 }valuesNemici;
 
+//prototipi delle funzioni usate nel file.
 void *navicella();
 void* nemici(void *arg);
 void *controllo();
 int menu(int maxx, int maxy);
 
-
+//variabili per la dimensione dello schermo e numero di nemici.
 int maxx, maxy, numNemici;
-
+//semafori usati per la gestione buffer.
 sem_t piene, libere;
 
-
+/**
+ * Funzione principale che si occupa di creare i threads.
+ */
 int main() {
-    int filedes[2], i, j=0, x_nemici, y_nemici, numColonne=1;
 
+    int i, j=0, x_nemici, y_nemici, numColonne=1;
+
+    //impostazioni per lo schermo
     initscr();
     noecho();
     cbreak();
@@ -76,16 +80,18 @@ int main() {
             break;
     }
 
+    //acquisizione dimensione dello schermo.
     getmaxyx(stdscr, maxy, maxx);
     x_nemici=maxx-5;
     y_nemici=3;
 
     refresh();
 
+    //inizializzazione dei semafori.
     sem_init(&piene,0,0);
     sem_init(&libere,0,MAX);
 
-    //Creare questa roba in un loop con tante variabili per ogni nemico
+    //creazione thread che gestisce la navicella.
     pthread_t Tnavicella;
     pthread_create(&Tnavicella,NULL,navicella,NULL);
 
@@ -95,11 +101,13 @@ int main() {
     //generazione dei thread che si occupano della generazione delle coordinate dei nemici.
     for(i=0; i<numNemici; i++){
 
+        //assegno al thread-argument i suoi valori.
         nemico[i].x = x_nemici;
         nemico[i].y = y_nemici;
         nemico[i].idNemico=i;
         nemico[i].Tnemico=Tnemico[i];
 
+        //creo il thread che gestisce il nemico
         pthread_create(&Tnemico[i],NULL,nemici,(void *)&nemico[i]);
 
         j++;
@@ -114,19 +122,8 @@ int main() {
                 y_nemici=10;
             numColonne++;
         }
-
-
     }
 
+    //il thread principale entra nella funzione controllo.
     controllo();
-
-    pthread_join(Tnavicella, NULL);
-
-    for(i=0; i<numNemici; i++) {
-        pthread_join(Tnemico[i], NULL);
-    }
-    clear();
-
-    endwin();
-    exit(0);
 }
