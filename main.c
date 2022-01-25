@@ -88,11 +88,9 @@ int main() {
     //Creare questa roba in un loop con tante variabili per ogni nemico
     pthread_t Tnavicella;
     pthread_create(&Tnavicella,NULL,navicella,NULL);
-    //
 
     valuesNemici nemico[numNemici];
     pthread_t Tnemico[numNemici];
-    //pthread_create(&Tnemico,NULL,nemiciPrimoLivello,(void *)&nemico1);
 
     //generazione dei thread che si occupano della generazione delle coordinate dei nemici.
     for(i=0; i<numNemici; i++){
@@ -122,10 +120,10 @@ int main() {
 
     controllo();
 
-    pthread_detach(Tnavicella);
+    pthread_join(Tnavicella, NULL);
 
     for(i=0; i<numNemici; i++) {
-        pthread_detach(Tnemico[i]);
+        pthread_join(Tnemico[i], NULL);
     }
     clear();
 

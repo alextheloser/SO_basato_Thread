@@ -186,20 +186,15 @@ void* nemici(void *arg){
             vb[1].i = BombaAvanzata;
             vb[1].threaddino = Tbombacurrnt2;
             pthread_create(&Tbombacurrnt2, NULL, bomba, (void *) &vb[1]);
-            pthread_detach(Tbombacurrnt1);
-            pthread_detach(Tbombacurrnt2);
         }
+        pthread_detach(Tbombacurrnt1);
+        pthread_detach(Tbombacurrnt2);
     }
     turnodimorireBomba=Tbombacurrnt1;
-    usleep(1000);
-    pthread_detach(Tbombacurrnt1);
+    pthread_join(Tbombacurrnt1, NULL);
     turnodimorireBomba=Tbombacurrnt2;
-    usleep(1000);
-    pthread_detach(Tbombacurrnt2);
-    pthread_mutex_unlock(&mtx);
-    pthread_mutex_lock(&mtx);
+    pthread_join(Tbombacurrnt2, NULL);
     turnodimorireNemici=-1;
-    pthread_mutex_unlock(&mtx);
     pthread_exit((void *)1);
 }
 
@@ -262,6 +257,20 @@ void* controllo(){
     int vitaNemici[numNemici][4];
     //inizializzazione delle variabili dichiarate sopra.
     navicella.x=-1;
+    switch(numNemici){
+        case 5:
+            valoreDifficolta=0;
+            break;
+        case 10:
+            valoreDifficolta=1;
+            break;
+        case 15:
+            valoreDifficolta=2;
+            break;
+        case 0:
+            valoreDifficolta=3;
+            break;
+    }
     pthread_mutex_lock(&mtx);
     for(i=0; i<numNemici; i++){
         statoNemico[i]=0;
@@ -287,11 +296,11 @@ void* controllo(){
         //leggo un valore dalla pipe.
         valore_letto = leggeDalBuffer();
         //controllo che tipo di valore ho letto.
-        pthread_mutex_lock(&mtx);
         switch (valore_letto.i) {
             case Nemico:
                 //cambio del colore per la stampa del nemico.
                 attron(COLOR_PAIR(2));
+                pthread_mutex_lock(&mtx);
                 //controllo se il nemico letto dalla pipe è di primo o di secondo livello
                 switch(statoNemico[valore_letto.id]){
                     case 0: //nemico di primo livello.
@@ -363,6 +372,7 @@ void* controllo(){
                         }
                         break;
                 }
+                pthread_mutex_unlock(&mtx);
                 //imposto il colore di base.
                 attron(COLOR_PAIR(1));
                 //controllo se il nemico letto ha raggiunto la navicella (condizione per perdere).
@@ -372,11 +382,11 @@ void* controllo(){
                     vite=0;
                     pthread_mutex_unlock(&mtx);
                 }
-                pthread_mutex_unlock(&mtx);
                 break;
             case Navicella:
                 //cambio del colore per la stampa della navicella.
                 attron(COLOR_PAIR(3));
+                pthread_mutex_lock(&mtx);
                 //in base alle vite rimesta della navicella stampo uno strite diverso (der dare un senso di danneggiamento della navicella).
                 switch(vite){
                     case 3:
@@ -434,11 +444,13 @@ void* controllo(){
                 break;
             case Missile:
                 //elimino il missile dalle coordinate vecchie.
+                pthread_mutex_lock(&mtx);
                 mvaddch(missili[valore_letto.id].y, missili[valore_letto.id].x,' ');
                 //aggiorno le coordinate del missile.
                 missili[valore_letto.id] = valore_letto;
                 //stampo il missile nella nuova posizione.
                 mvaddch(missili[valore_letto.id].y, missili[valore_letto.id].x,SpriteMissile);
+                pthread_mutex_unlock(&mtx);
                 //controllo delle collisioni del missile
                 for(i=0; i<numNemici; i++){
                     for(n=0; n<2; n++){
@@ -450,6 +462,7 @@ void* controllo(){
                             pthread_mutex_lock(&mtx);
                             turnodimorire=missili[n].Tthreadtokill;
                             rindondanzaTurnodiMorireBomba=bombe[i].id;
+                            usleep(1000);
                             pthread_mutex_unlock(&mtx);
                             //termino il processo che gestiva la bomba.
 
@@ -471,6 +484,7 @@ void* controllo(){
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
                                 rindondanzaTurnodiMorireBombaAvanzata=bombeAvanzate[i].id;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
                                 //termino il processo che gestiva la bomba.
@@ -505,6 +519,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
                                 //imposto le coordnate del missile dallo schermo.
@@ -558,6 +573,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
 
@@ -602,6 +618,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
 
@@ -646,6 +663,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
 
@@ -691,6 +709,7 @@ void* controllo(){
 
                                 pthread_mutex_lock(&mtx);
                                 turnodimorire=missili[n].Tthreadtokill;
+                                usleep(1000);
                                 pthread_mutex_unlock(&mtx);
 
 
@@ -727,12 +746,8 @@ void* controllo(){
                                 nemico[i].y=1000;
 
                                 //termino il processo che gestiva i nemici.
-                                pthread_mutex_lock(&mtx);
-                                //pthread_cancel(nemico[i].Tthreadtokill);
-                                turnodimorireNemici=nemico[i].id;
-                                //mvprintw(10,30,"ciao: %d",turnodimorire);
-                                pthread_mutex_unlock(&mtx);
-                                //pthread_join(nemico[i].Tthreadtokill, NULL);
+                                turnodimorireNemici=i;
+                                usleep(1000);
                                 //aggiorno lo schermo.
                                 refresh();
                                 //modifico lo stato del nemico colpito da secondo livello a distrutto.
@@ -744,6 +759,7 @@ void* controllo(){
                 pthread_mutex_unlock(&mtx);
                 break;
             case Bomba:
+                pthread_mutex_lock(&mtx);
                 //cambio del colore per la stampa della bomba.
                 attron(COLOR_PAIR(2));
                 //cancello la bomba dalle coordinate vecchie.
@@ -752,6 +768,7 @@ void* controllo(){
                 bombe[valore_letto.id] = valore_letto;
                 //stampo la bomba nella nuova posizione.
                 mvaddch(bombe[valore_letto.id].y, bombe[valore_letto.id].x,SpriteBomba);
+                pthread_mutex_unlock(&mtx);
                 //collisione bomba-navicella
                 for(i=0; i<numNemici; i++){
                     if((navicella.x==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+1==bombe[i].x && navicella.y==bombe[i].y) || (navicella.x+2==bombe[i].x && navicella.y==bombe[i].y)
@@ -772,6 +789,7 @@ void* controllo(){
                 }
                 //in base alle vite rimaste ambio lo sprite della navicella.
                 attron(COLOR_PAIR(3));
+                pthread_mutex_lock(&mtx);
                 switch(vite) {
                     case 2:
                         for (i = 0; i < 3; i++) {
@@ -796,6 +814,7 @@ void* controllo(){
             case BombaAvanzata:
                 if(statoNemico[valore_letto.id]==1){
                     //cambio del colore per la stampa della bomba.
+                    pthread_mutex_lock(&mtx);
                     attron(COLOR_PAIR(2));
                     //cancello la bomba dalle coordinate vecchie.
                     mvaddch(bombeAvanzate[valore_letto.id].y, bombeAvanzate[valore_letto.id].x,' ');
@@ -803,6 +822,7 @@ void* controllo(){
                     bombeAvanzate[valore_letto.id] = valore_letto;
                     //stampo la bomba nella nuova posizione.
                     mvaddch(bombeAvanzate[valore_letto.id].y, bombeAvanzate[valore_letto.id].x,SpriteBomba);
+                    pthread_mutex_unlock(&mtx);
                     //collisione bomba-navicella
                     for(i=0; i<numNemici; i++){
                         if((navicella.x==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+1==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y) || (navicella.x+2==bombeAvanzate[i].x && navicella.y==bombeAvanzate[i].y)
@@ -822,6 +842,7 @@ void* controllo(){
                     }
                     //in base alle vite rimaste ambio lo sprite della navicella.
                     attron(COLOR_PAIR(3));
+                    pthread_mutex_lock(&mtx);
                     switch(vite) {
                         case 2:
                             for (i = 0; i < 3; i++) {
@@ -840,9 +861,9 @@ void* controllo(){
                             }
                             break;
                     }
+                    pthread_mutex_unlock(&mtx);
                     attron(COLOR_PAIR(1));
                 }
-                pthread_mutex_unlock(&mtx);
                 break;
         }
         //ogni tot cicli i punti vengono decrementati.
@@ -852,6 +873,7 @@ void* controllo(){
             }
         }
         //stampa delle informazioni aggiornate.
+        pthread_mutex_lock(&mtx);
         mvprintw(0, 1, "Vite: %d", vite);
         mvprintw(0, 10, "Nemici: %d  ", nemiciVivi);
         mvprintw(0, 40, "Nemici secondo livello: %d  ", nemiciSecLiv);
@@ -859,6 +881,7 @@ void* controllo(){
         for(i=0; i<maxx; i++){
             mvprintw(1, i, "-");
         }
+        pthread_mutex_unlock(&mtx);
         //aggiornamento degli elementi a schermo.
         refresh();
     }while(vite>0 && nemiciVivi>0); //ciclo termina quando la navicella non ha più vite oppure quando tutti i nemici sono stati distrutti.
@@ -875,20 +898,21 @@ void* controllo(){
     if(vite<=0){
         for (i = 0; i < numNemici; i++) {
             if (statoNemico[i] == 0 || statoNemico[i] == 1) {
-                pthread_mutex_lock(&mtx);
 
-                turnodimorireNemici = nemico[i].id;
+                turnodimorireNemici = i;
+                usleep(1000);
 
-                pthread_mutex_unlock(&mtx);
 
             }
         }
 
         attron(COLOR_PAIR(3));
+        pthread_mutex_lock(&mtx);
         for(i=0; i<7; i++){
             mvprintw(maxy/2-10+i, maxx/2-50, gameover[i]);
         }
         attron(COLOR_PAIR(1));
+
         while(uscita!=32){
             mvprintw(maxy/2-2, maxx/2-13,"Hai totalizzato %d punti", punti);
             mvprintw(maxy/2, maxx/2-11,"Premi spazio per uscire");
@@ -896,18 +920,15 @@ void* controllo(){
             uscita=getch();
             refresh();
         }
-        mvprintw(11,11,"porca madonnayyyyy");
-        refresh();
-        usleep(30000);
+        pthread_mutex_unlock(&mtx);
 
     }
 
-    mvprintw(12,12,"porca sant'avendrace");
-    refresh();
     //stampa di game over quando si vince.
 
-    if(nemiciVivi==0 && valoreDifficolta!=3 && vite>0){
+    if(nemiciVivi==0 && valoreDifficolta!=3){
 
+        pthread_mutex_lock(&mtx);
         attron(COLOR_PAIR(3));
         for(i=0; i<7; i++){
             mvprintw(maxy/2-10+i, maxx/2-50, youwon[i]);
@@ -920,9 +941,10 @@ void* controllo(){
             uscita=getch();
             refresh();
         }
+        pthread_mutex_unlock(&mtx);
     }
-    mvprintw(13,13,"porco sant'efisio");
-    refresh();
+
+    pthread_mutex_destroy(&mtx);
 }
 
 int menu(int maxx, int maxy){
